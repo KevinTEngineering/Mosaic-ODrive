@@ -1,0 +1,10 @@
+import odrive
+odrv0 = odrive.find_any()
+print(str(odrv0.vbus_voltage))
+
+odrv0.axis0.controller.config.control_mode = 3
+
+p1 = 0
+p2 = 50000
+
+while(odrv0.)
