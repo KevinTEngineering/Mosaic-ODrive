@@ -2,7 +2,7 @@ import odrive
 from odrive.enums import *
 import time
 
-# Used to make using the ODrive easier Version 1.0
+# Used to make using the ODrive easier Version 1.1
 # Last update August 18, 2018 by Blake Lazarine
 
 class ODrive_Axis(object):
@@ -77,24 +77,15 @@ class ODrive_Axis(object):
 
     def is_busy(self):
         if(self.get_vel()) > 0:
-            return false
-        else
-            return true
+            return False
+        else:
+            return True
 
+print('ODrive Ease Lib 1.1')
+'''
 odrv0 = odrive.find_any()
 print(str(odrv0.vbus_voltage))
 
-ax1 = ODrive_Axis(odrv0.axis1)
-ax1.calibrate()
+ax0 = ODrive_Axis(odrv0.axis0)
 
-#ax0 = ODrive_Axis(odrv0.axis0)
-#ax0.calibrate()
-
-ax1.set_zero(ax1.get_pos())
-print(str(ax1.get_pos()))
-ax1.set_pos(50000)
-while(ax1.is_busy()):
-    continue
-print(str(ax1.get_pos()))
-
-print("done")
+'''
