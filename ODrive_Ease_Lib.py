@@ -88,7 +88,6 @@ class ODrive_Axis(object):
         self.set_zero(self.get_pos())
 
         if not length == -1:
-
             self.set_current(current * 1 * direction)
             sleep(0.05)
             while is_busy():
@@ -96,12 +95,12 @@ class ODrive_Axis(object):
 
             # end pos should be length
             if abs(self.get_pos() - length) > 50:
-                print('AAAAAAHHHHHHH I COULDN\'T HOME CORRECTLY!!!')
+                print('ODrive could not home correctly')
                 # maybe throw a more formal error here
                 return False
 
         self.get_pos(0)
-        print('homed! :) ')
+        print('ODrive homed correctly')
         return True
 
     def is_busy(self):
