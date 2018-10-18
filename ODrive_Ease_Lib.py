@@ -89,14 +89,14 @@ class ODrive_Axis(object):
     def home(self, current, length, direction=1):
         self.set_current(current * -1 * direction)
         time.sleep(0.05)
-        while is_busy():
+        while self.is_busy():
             pass
         self.set_zero(self.get_pos())
 
         if not length == -1:
             self.set_current(current * 1 * direction)
             time.sleep(0.05)
-            while is_busy():
+            while self.is_busy():
                 pass
 
             # end pos should be length
