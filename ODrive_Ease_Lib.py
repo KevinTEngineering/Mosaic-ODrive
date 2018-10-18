@@ -2,7 +2,7 @@ import odrive
 from odrive.enums import *
 import time
 
-# Used to make using the ODrive easier Version 1.2.1
+# Used to make using the ODrive easier Version 1.2.2
 # Last update October 18, 2018 by Blake Lazarine
 
 class ODrive_Axis(object):
@@ -76,26 +76,34 @@ class ODrive_Axis(object):
         return self.axis.controller.config.vel_integrator_gain
 
     def is_busy(self):
-        if(self.get_vel()) > 0:
-            return False
-        else:
+        if(abs(self.get_vel())) > 500:
             return True
+        else:
+            return False
 
     # method to home ODrive using where the chassis is mechanically stopped
     # length is expected length of the track the ODrive takes
     # set length to -1 if you do not want the ODrive to check its homing
     # direction = 1 or -1 depending on which side of the track you want home to be at
     # use direction = 1 if you want the track to be of only positive location values
-    def home(self, current, length, direction=1):
-        self.set_current(current * -1 * direction)
-        time.sleep(0.05)
+    def home(self, current1, current2, length=-1, direction=1):
+        self.set_current(current1 * -1 * direction)
+        print('here')
+        time.sleep(1)
+        print('there')
         while self.is_busy():
             pass
-        self.set_zero(self.get_pos())
+
+        time.sleep(1)
+
+        self.set_zero(self.get_raw_pos())
+        print(self.get_pos())
+
+        time.sleep(1)
 
         if not length == -1:
-            self.set_current(current * 1 * direction)
-            time.sleep(0.05)
+            self.set_current(current2 * 1 * direction)
+            time.sleep(1)
             while self.is_busy():
                 pass
 
@@ -111,11 +119,14 @@ class ODrive_Axis(object):
 
 
 
-print('ODrive Ease Lib 1.1')
+print('ODrive Ease Lib 1.2.2')
 '''
 odrv0 = odrive.find_any()
 print(str(odrv0.vbus_voltage))
 
-ax0 = ODrive_Axis(odrv0.axis0)
+ax = ODrive_Axis(odrv0.axis1)
+ax.calibrate()
+#ax.set_vel(10000)
+#ax.home(0.05, -1)
 
 '''
