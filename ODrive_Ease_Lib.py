@@ -105,7 +105,7 @@ class ODrive_Axis(object):
                 # maybe throw a more formal error here
                 return False
 
-        self.get_pos(0)
+        self.set_pos(0)
         print('ODrive homed correctly')
         return True
 
