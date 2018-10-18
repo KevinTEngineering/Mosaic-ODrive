@@ -2,8 +2,8 @@ import odrive
 from odrive.enums import *
 import time
 
-# Used to make using the ODrive easier Version 1.2
-# Last update October 11, 2018 by Blake Lazarine
+# Used to make using the ODrive easier Version 1.2.1
+# Last update October 18, 2018 by Blake Lazarine
 
 class ODrive_Axis(object):
 
@@ -75,6 +75,12 @@ class ODrive_Axis(object):
     def get_vel_integrator_gain(self):
         return self.axis.controller.config.vel_integrator_gain
 
+    def is_busy(self):
+        if(self.get_vel()) > 0:
+            return False
+        else:
+            return True
+
     # method to home ODrive using where the chassis is mechanically stopped
     # length is expected length of the track the ODrive takes
     # set length to -1 if you do not want the ODrive to check its homing
@@ -82,14 +88,14 @@ class ODrive_Axis(object):
     # use direction = 1 if you want the track to be of only positive location values
     def home(self, current, length, direction=1):
         self.set_current(current * -1 * direction)
-        sleep(0.05)
+        time.sleep(0.05)
         while is_busy():
             pass
         self.set_zero(self.get_pos())
 
         if not length == -1:
             self.set_current(current * 1 * direction)
-            sleep(0.05)
+            time.sleep(0.05)
             while is_busy():
                 pass
 
@@ -103,11 +109,7 @@ class ODrive_Axis(object):
         print('ODrive homed correctly')
         return True
 
-    def is_busy(self):
-        if(self.get_vel()) > 0:
-            return False
-        else:
-            return True
+
 
 print('ODrive Ease Lib 1.1')
 '''
