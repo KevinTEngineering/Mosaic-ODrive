@@ -15,11 +15,8 @@ class ODrive_Axis(object):
     def calibrate(self):
         self.axis.requested_state = AXIS_STATE_FULL_CALIBRATION_SEQUENCE
         start = time.time()
-        again = True
-        while(again):
+        while self.axis.current_state != AXIS_STATE_IDLE:
             time.sleep(0.1)
-            if self.axis.current_state != AXIS_STATE_IDLE:
-                again = False
             if time.time() - start > 15:
                 print("could not calibrate, try rebooting odrive")
                 return False
