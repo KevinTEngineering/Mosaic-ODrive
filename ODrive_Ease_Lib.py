@@ -7,14 +7,12 @@ import time
 
 class ODrive_Axis(object):
 
-    def __init__(self, axis, odr=None, axno=None):
+    def __init__(self, axis):
         self.axis = axis
         self.zero = 0;
         self.axis.controller.config.vel_limit = 20000
-        self.odrv = odr
-        self.axis_num = axno
 
-    def calibrate(self, retry=False):
+    def calibrate(self):
         self.axis.requested_state = AXIS_STATE_FULL_CALIBRATION_SEQUENCE
         start = time.time()
         again = True
@@ -22,28 +20,10 @@ class ODrive_Axis(object):
             time.sleep(0.1)
             if self.axis.current_state != AXIS_STATE_IDLE:
                 again = False
-            if time.time() - start > 15 and retry:
-                if odrv == None:
-                    print("Could not calibrate. If problem is unsolvable")
-                    print("specify odrive board in initializer of the ODrive_Axis")
-                    print("form: ax = ODrive_Axis(axis_object, odrive_object, axis_number)")
-                    print("ex: ax = ODrive_Axis(odrv0.axis0, odrv0, 0)")
-                    return False
-                again = False
-                print("Could not calibrate, rebooting odrive")
-                self.reboot()
-                self.calibrate(True)
+            if time.time() - start > 15:
+                print("could not calibrate, try rebooting odrive")
+                return False
 
-    def reboot(self):
-        if self.odrv == None:
-            print("cannot reboot, define odrive")
-            return False
-        self.odrv.reboot()
-        self.odrv = odrive.find_any()
-        if axis_num == 0:
-            self.axis = odrv.axis0
-        elif axis_num ==1:
-            self.axis = odrv.axis1
 
     def is_calibrated(self):
         return self.axis.motor.is_calibrated
