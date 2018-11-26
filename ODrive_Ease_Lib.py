@@ -2,21 +2,52 @@ import odrive
 from odrive.enums import *
 import time
 
-# Used to make using the ODrive easier Version 1.2.2
+# Used to make using the ODrive easier Version 1.3
 # Last update October 18, 2018 by Blake Lazarine
 
 class ODrive_Axis(object):
 
-    def __init__(self, axis):
+    def __init__(self, axis, odr=None, axno=None):
         self.axis = axis
         self.zero = 0;
         self.axis.controller.config.vel_limit = 20000
+        self.odrv = odr
+        self.axis_num = axno
 
-    def calibrate(self):
+    def calibrate(self, retry=False):
         self.axis.requested_state = AXIS_STATE_FULL_CALIBRATION_SEQUENCE
-        while(self.axis.current_state != AXIS_STATE_IDLE):
+        start = time.time()
+        again = True
+        while(again):
             time.sleep(0.1)
-    
+            if self.axis.current_state != AXIS_STATE_IDLE:
+                again = False
+            if time.time() - start > 15 and retry:
+                if odrv == None:
+                    print("Could not calibrate. If problem is unsolvable")
+                    print("specify odrive board in initializer of the ODrive_Axis")
+                    print("form: ax = ODrive_Axis(axis_object, odrive_object, axis_number)")
+                    print("ex: ax = ODrive_Axis(odrv0.axis0, odrv0, 0)")
+                    return False
+                again = False
+                print("Could not calibrate, rebooting odrive")
+                self.reboot()
+                self.calibrate(True)
+
+    def reboot(self):
+        if self.odrv == None:
+            print("cannot reboot, define odrive")
+            return False
+        self.odrv.reboot()
+        self.odrv = odrive.find_any()
+        if axis_num == 0:
+            self.axis = odrv.axis0
+        elif axis_num ==1:
+            self.axis = odrv.axis1
+
+    def is_calibrated(self):
+        return self.axis.motor.is_calibrated
+
     def set_vel(self, vel):
         self.axis.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
         self.axis.controller.config.control_mode = CTRL_MODE_VELOCITY_CONTROL
@@ -81,6 +112,12 @@ class ODrive_Axis(object):
         else:
             return False
 
+    def set_calibration_current(self, curr):
+        self.axis.motor.config.calibration_current = curr
+
+    def get_calibration_current(self):
+        return axis.motor.config.calibration_current
+
     # method to home ODrive using where the chassis is mechanically stopped
     # length is expected length of the track the ODrive takes
     # set length to -1 if you do not want the ODrive to check its homing
@@ -119,7 +156,7 @@ class ODrive_Axis(object):
 
 
 
-print('ODrive Ease Lib 1.2.2')
+print('ODrive Ease Lib 1.3')
 '''
 odrv0 = odrive.find_any()
 print(str(odrv0.vbus_voltage))
