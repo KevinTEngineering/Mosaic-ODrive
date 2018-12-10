@@ -2,7 +2,7 @@ import odrive
 from odrive.enums import *
 import time
 
-# Used to make using the ODrive easier Version 1.3
+# Used to make using the ODrive easier Version 1.3.2
 # Last update October 18, 2018 by Blake Lazarine
 
 class ODrive_Axis(object):
@@ -63,7 +63,7 @@ class ODrive_Axis(object):
         self.axis.controller.current_setpoint = curr
 
     def get_vel(self):
-        return self.axis.encoder.pll_vel
+        return self.axis.encoder.vel_estimate
 
     def set_pos_gain(self, val):
         self.axis.controller.config.pos_gain = val
@@ -131,9 +131,40 @@ class ODrive_Axis(object):
         print('ODrive homed correctly')
         return True
 
+    def home_with_vel(self, vel, length=-1, direction=1):
+        self.set_vel(vel * -1 * direction)
+        print('here')
+        time.sleep(1)
+        print('there')
+        while self.is_busy():
+            pass
+
+        time.sleep(1)
+
+        self.set_zero(self.get_raw_pos())
+        print(self.get_pos())
+
+        time.sleep(1)
+
+        if not length == -1:
+            self.set_vel(vel * 1 * direction)
+            time.sleep(1)
+            while self.is_busy():
+                pass
+
+            print(self.get_pos())
+
+            # end pos should be length
+            if abs(self.get_pos() - length) > 50:
+                print('ODrive could not home correctly')
+                # maybe throw a more formal error here
+                return False
+
+        print('ODrive homed correctly')
+        return True
 
 
-print('ODrive Ease Lib 1.3')
+print('ODrive Ease Lib 1.3.2')
 '''
 odrv0 = odrive.find_any()
 print(str(odrv0.vbus_voltage))
