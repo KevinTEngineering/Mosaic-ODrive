@@ -3,7 +3,7 @@ from odrive.enums import *
 import time
 
 # Used to make using the ODrive easier Version 1.3.2
-# Last update October 18, 2018 by Blake Lazarine
+# Last update December 10, 2018 by Blake Lazarine
 
 class ODrive_Axis(object):
 
