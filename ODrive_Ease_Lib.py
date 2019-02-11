@@ -38,7 +38,7 @@ class ODrive_Axis(object):
 
     def set_zero(self, pos):
         self.zero = pos
-    
+
     def get_pos(self):
         return self.axis.encoder.pos_estimate - self.zero
 
@@ -162,6 +162,14 @@ class ODrive_Axis(object):
 
         print('ODrive homed correctly')
         return True
+
+    #returns phase B current going into motor
+    def get_curr_B(self):
+        return self.axis.motor.current_meas_phB
+
+    # returns phase C current going into motor
+    def get_curr_C(self):
+        return self.axis.motor.current_meas_phC
 
 
 print('ODrive Ease Lib 1.3.2')
