@@ -35,7 +35,7 @@ class ODrive_Axis(object):
 
     def get_vel_limit(self):
         return self.axis.controller.config.vel_limit
-
+    
     def set_zero(self, pos):
         self.zero = pos
 
@@ -93,7 +93,7 @@ class ODrive_Axis(object):
         self.axis.motor.config.calibration_current = curr
 
     def get_calibration_current(self):
-        return axis.motor.config.calibration_current
+        return self.axis.motor.config.calibration_current
 
     # method to home ODrive using where the chassis is mechanically stopped
     # length is expected length of the track the ODrive takes
