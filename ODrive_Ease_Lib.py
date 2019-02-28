@@ -83,8 +83,8 @@ class ODrive_Axis(object):
     def get_vel_integrator_gain(self):
         return self.axis.controller.config.vel_integrator_gain
 
-    def is_busy(self):
-        if(abs(self.get_vel())) > 500:
+    def is_busy(self, speed=500):
+        if(abs(self.get_vel())) > speed:
             return True
         else:
             return False
