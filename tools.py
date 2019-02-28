@@ -63,7 +63,10 @@ def setup_enc():
 
     ax0.set_vel(15000)
     ax1.set_vel(15000)
-    time.sleep(15)
+    time.sleep(8)
+    ax0.set_vel(30000)
+    ax1.set_vel(30000)
+    time.sleep(5)
     ax0.set_vel(0)
     ax1.set_vel(0)
     ax0.set_zero(ax0.get_raw_pos())
@@ -213,7 +216,7 @@ def pid_pid(ax1, ax2, n=20, kp=0.0, ki=0.0, kd=0.0, t_kp=0.0, t_ki=0.0, t_kd=0.0
     
     start = ax1.get_pos()
     err = 0
-    diff = abs(ax1.get_pos() - ax2.get_pos())
+    diff = ax1.get_pos() - ax2.get_pos()
     increment = 150000 / (n - 1)
 
     err_sum = 0
