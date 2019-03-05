@@ -6,6 +6,7 @@ import time
 import usb.core
 
 import numpy
+import math
 
 # for future note: two motor vert serial # 61951538836535
 #                  one motor hori serial # 61985896477751
@@ -97,7 +98,7 @@ class GGMotors(object):
         self._yannie_axis0.set_pos(pos)
         self._yannie_axis1.set_pos(pos)
     
-    def set_x_pos(self, pos, vel, t_kp=0.0, t_ki=0.0, t_kd=0.0):
+    def set_x_pos_vel_pid(self, pos, vel, t_kp=0.0, t_ki=0.0, t_kd=0.0):
         
         targ_vel = numpy.sign(pos - self.get_x_pos()) * abs(vel)
         
@@ -117,7 +118,8 @@ class GGMotors(object):
             last_err = curr_err
 
         self.set_x_vel_no_pid(0)
-    def set_y_pos(self, pos, vel, kp=0.0, ki=0.0, kd=0.0, t_kp=0.0, t_ki=0.0, t_kd=0.0):
+    def set_y_pos_vel_pid(self, pos, vel, kp=0.0, ki=0.0, kd=0.0, t_kp=0.0, t_ki=0.0, t_kd=0.0):
+        #kp=125, 0.4, 100
         
         targ_vel = numpy.sign(pos - self.get_y_pos()) * abs(vel)
 
@@ -149,6 +151,155 @@ class GGMotors(object):
             last_diff = curr_diff
 
         self.set_y_vel_no_pid(0)
+
+    def set_x_pos_pos_pid(self, pos, vel, t_kp=200, t_ki=0.0, t_kd=0.0, dt=0.001):
+        step = numpy.sign(pos - self.get_x_pos()) * abs(vel) * dt
+        targ_pos = self.get_x_pos()
+
+        err = 0
+        err_sum = 0
+        last_err = 0
+
+        curr_pos = self.get_x_pos()
+
+        mark = time.time()
+        while curr_pos < pos - abs(step) or curr_pos > pos + abs(step):
+
+            targ_pos += step
+            curr_pos = self.get_x_pos()
+            err = curr_pos - targ_pos
+            
+            err_sum += err
+            
+            self._xavier_axis0.set_vel(- err * t_kp - err_sum * t_ki - (err - last_err) * t_kd)
+            
+            while time.time() < mark + dt:
+                pass
+
+            mark = time.time()
+
+            last_err = err
+
+        targ_pos = pos
+
+        while abs(self.get_x_vel()) > 1:
+
+            err = self.get_x_pos() - targ_pos
+            
+            err_sum += err
+
+            self._xavier_axis0.set_vel(- err * t_kp - err_sum * t_ki - (err - last_err) * t_kd)
+
+            while time.time() < mark + dt:
+                pass
+
+            mark = time.time()
+
+            last_err = err
+        
+    def circle(self, times, vel, x_kp=0.0, x_ki=0.0, x_kd=0.0, y_kp=0.0, y_ki=0.0, y_kd=0.0, dt=0.001, d_kp=0.0, d_ki=0.0, d_kd=0.0):
+        self.set_x_pos_no_pid(-25000)
+        self.set_y_pos_vel_pid(-50000, 20000, kp=125, ki=0.4, kd=100)
+        time.sleep(2)
+
+        targ_x = 1 * 25000 - 50000
+        targ_y = 0 * 25000 - 50000
+
+        x_err = 0
+        x_err_sum = 0
+        x_last_err = 0
+
+        y_err = 0
+        y_err_sum = 0
+        y_last_err = 0
+
+        diff_err = 0
+        diff_err_sum = 0
+        diff_last_err = 0
+        
+        num_pieces = int(50000 * math.pi / (vel * dt))
+        piece = vel * dt / 25000
+
+        mark = time.time()
+
+        for x in range(0, times):
+            for x in range(0, num_pieces):
+                targ_x = numpy.cos(x * piece) * 25000 - 50000
+                targ_y = numpy.sin(x * piece) * 25000 - 50000
+
+                x_err = self.get_x_pos() - targ_x
+                x_err_sum += x_err
+
+                y_err = self.get_y_pos() - targ_y
+                y_err_sum += y_err
+                
+                diff_err = self._yannie_axis0.get_pos() - self._yannie_axis1.get_pos()
+                diff_err_sum += diff_err
+                
+                while time.time() < mark + dt:
+                    pass
+
+                self.set_x_vel_no_pid(- x_err * vel * x_kp - x_err_sum * vel * x_ki - (x_err - x_last_err) * vel * x_kd)
+                
+                self._yannie_axis0.set_vel(- diff_err * vel * d_kp - diff_err_sum * vel * d_ki - (diff_err - diff_last_err) * vel * d_kd
+                                           - y_err * vel * y_kp - y_err_sum * vel * y_ki - (y_err - y_last_err) * vel * y_kd)
+                self._yannie_axis1.set_vel(  diff_err * vel * d_kp + diff_err_sum * vel * d_ki + (diff_err - diff_last_err) * vel *d_kd
+                                           - y_err * vel * y_kp - y_err_sum * vel * y_ki - (y_err - y_last_err) * vel * y_kd)
+                
+                mark = time.time()
+
+                x_last_err = x_err
+                y_last_err = y_err
+                diff_last_err = diff_err
+
+        self.set_x_vel_no_pid(0)
+        self.set_y_vel_no_pid(0)
+                
+
+    def circle_pos(self, times, vel, dt=0.001):
+        self.set_x_pos_no_pid(-25000)
+        self.set_y_pos_vel_pid(-50000, 20000, kp=125, ki=0.4, kd=100)
+        time.sleep(2)
+
+        targ_x = 1 * 25000 - 50000
+        targ_y = 0 * 25000 - 50000
+
+        x_err = 0
+        x_err_sum = 0
+        x_last_err = 0
+
+        y_err = 0
+        y_err_sum = 0
+        y_last_err = 0
+
+        diff_err = 0
+        diff_err_sum = 0
+        diff_last_err = 0
+
+        num_pieces = int(50000 * math.pi / (vel * dt))
+        piece = vel * dt / 25000
+
+        mark = time.time()
+
+        for x in range(0, times):
+            for x in range(0, num_pieces):
+                targ_x = numpy.cos(x * piece) * 25000 - 50000
+                targ_y = numpy.sin(x * piece) * 25000 - 50000
+
+                while time.time() < mark + dt:
+                    pass
+
+                self.set_x_pos_no_pid(targ_x)
+                self._yannie_axis0.set_pos(targ_y)
+                self._yannie_axis1.set_pos(targ_y)
+
+                mark = time.time()
+
+
+        self.set_x_vel_no_pid(0)
+        self.set_y_vel_no_pid(0)
+
+                
 
 
     def set_x_zero(self):
