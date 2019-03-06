@@ -56,9 +56,11 @@ class GGMotors(object):
         self.set_x_vel_limit(500000)
         self.set_y_vel_limit(500000)
 
+        self.set_x_zero()
+        self.set_y_zero()
+
         self.set_x_vel_no_pid(50000)
-        self.set_y_vel_no_pid(50000)
-        time.sleep(8)
+        self.set_y_vel_no_pid(100000)
         self.set_x_vel_no_pid(0)
         self.set_y_vel_no_pid(0)
 
@@ -97,6 +99,29 @@ class GGMotors(object):
     def set_y_pos_no_pid(self, pos):
         self._yannie_axis0.set_pos(pos)
         self._yannie_axis1.set_pos(pos)
+
+    def set_y_vel_time(self, t, vel, d_kp=125, d_ki=0.4, d_kd=100):
+
+        start = time.time()
+        
+        diff = self._yannie_axis0.get_pos() - self._yannie_axis1.get_pos()
+        diff_sum = diff
+        last_diff = diff
+
+        self.set_y_vel_no_pid(vel)
+        curr_diff = 0
+        
+        while time.time() < start + t:
+
+            curr_diff = self._yannie_axis0.get_pos() - self._yannie_axis1.get_pos()
+            diff_sum += curr_diff
+
+            self._yannie_axis0.set_vel(vel - curr_diff * d_kp - diff_sum * d_ki - (curr_diff - last_diff) * d_kd)
+            self._yannie_axis1.set_vel(vel + curr_diff * d_kp + diff_sum * d_ki + (curr_diff - last_diff) * d_kd)
+
+            last_diff = curr_diff
+
+        self.set_y_vel_no_pid(0)
     
     def set_x_pos_vel_pid(self, pos, vel, t_kp=0.0, t_ki=0.0, t_kd=0.0):
         
@@ -197,13 +222,13 @@ class GGMotors(object):
 
             last_err = err
         
-    def circle(self, times, vel, x_kp=0.0, x_ki=0.0, x_kd=0.0, y_kp=0.0, y_ki=0.0, y_kd=0.0, dt=0.001, d_kp=0.0, d_ki=0.0, d_kd=0.0):
+    def circle(self, times, vel, x_kp=40, x_ki=0.0, x_kd=0.0, y_kp=40, y_ki=0.0, y_kd=0.0, dt=0.001, d_kp=125, d_ki=0.4, d_kd=100):
         self.set_x_pos_no_pid(-25000)
-        self.set_y_pos_vel_pid(-50000, 20000, kp=125, ki=0.4, kd=100)
+        self.set_y_pos_vel_pid(-40000, 20000, kp=125, ki=0.4, kd=100)
         time.sleep(2)
 
-        targ_x = 1 * 25000 - 50000
-        targ_y = 0 * 25000 - 50000
+        targ_x = 1 * 25000 - 40000
+        targ_y = 0 * 25000 - 40000
 
         x_err = 0
         x_err_sum = 0
@@ -224,8 +249,8 @@ class GGMotors(object):
 
         for x in range(0, times):
             for x in range(0, num_pieces):
-                targ_x = numpy.cos(x * piece) * 25000 - 50000
-                targ_y = numpy.sin(x * piece) * 25000 - 50000
+                targ_x = numpy.cos(x * piece) * 25000 - 40000
+                targ_y = numpy.sin(x * piece) * 25000 - 40000
 
                 x_err = self.get_x_pos() - targ_x
                 x_err_sum += x_err
@@ -258,11 +283,11 @@ class GGMotors(object):
 
     def circle_pos(self, times, vel, dt=0.001):
         self.set_x_pos_no_pid(-25000)
-        self.set_y_pos_vel_pid(-50000, 20000, kp=125, ki=0.4, kd=100)
+        self.set_y_pos_vel_pid(-40000, 50000, kp=125, ki=0.4, kd=100)
         time.sleep(2)
 
         targ_x = 1 * 25000 - 50000
-        targ_y = 0 * 25000 - 50000
+        targ_y = 0 * 25000 - 40000
 
         x_err = 0
         x_err_sum = 0
@@ -284,9 +309,9 @@ class GGMotors(object):
         for x in range(0, times):
             for x in range(0, num_pieces):
                 targ_x = numpy.cos(x * piece) * 25000 - 50000
-                targ_y = numpy.sin(x * piece) * 25000 - 50000
+                targ_y = numpy.sin(x * piece) * 25000 - 40000
 
-                while time.time() < mark + dt:
+                while time.time() < mark + dt and abs(self._yannie_axis0.get_pos() - self._yannie_axis1.get_pos()) > 200:
                     pass
 
                 self.set_x_pos_no_pid(targ_x)
