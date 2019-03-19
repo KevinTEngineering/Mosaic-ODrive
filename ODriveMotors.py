@@ -4,9 +4,10 @@ from odrive.enums import *
 import ODrive_Ease_Lib
 import time
 import usb.core
-
+import svg.path
 import numpy
 import math
+from pidev import stepper
 
 # for future note: two motor vert serial # 61951538836535
 #                  one motor hori serial # 61985896477751
@@ -52,20 +53,33 @@ class GGMotors(object):
             if time.time() - start > 15:
                 print("could not calibrate, try rebooting odrive")
                 return
-        
+        self._blake = stepper(port=1, microsteps=32, spd = 1000)
+        self._blake.set_max_speed(1000)
+        self._blake.set_speed(100)
         self.set_x_vel_limit(500000)
         self.set_y_vel_limit(500000)
+        self.set_x_accel_limit(1000000)
+        self.set_y_accel_limit(200000)
+        self.set_x_decel_limit(1000000)
+        self.set_y_accel_limit(200000)
+        self.set_x_A_per_css(0)
+        self.set_y_A_per_css(0)
+        self.set_x_current_limit(15)
+        self.set_y_current_limit(15)
 
         self.set_x_zero()
         self.set_y_zero()
 
         self.set_x_vel_no_pid(50000)
         self.set_y_vel_no_pid(100000)
+        time.sleep(8)
+        self._blake.home(1)
         self.set_x_vel_no_pid(0)
         self.set_y_vel_no_pid(0)
 
         self.set_x_zero()
         self.set_y_zero()
+        self._blake.go_to_position(-2000)
 
     def set_x_vel_no_pid(self, vel):
         self._xavier_axis0.set_vel(vel)
@@ -81,12 +95,73 @@ class GGMotors(object):
         return (self._yannie_axis0.get_vel() + self._yannie_axis1.get_vel()) / 2
 
     def set_x_vel_limit(self, limit):
-        self._xavier_axis0.set_vel_limit(limit)
+        self._xavier.axis0.controller.config.vel_limit = limit
+        self._xavier.axis0.trap_traj.config.vel_limit = limit
+
+    def get_x_vel_limit(self):
+        return self._xavier.axis0.controller.config.vel_limit
 
     def set_y_vel_limit(self, limit):
-        self._yannie_axis0.set_vel_limit(limit)
-        self._yannie_axis1.set_vel_limit(limit)
+        self._yannie.axis0.controller.config.vel_limit = int(limit * 1.1)
+        self._yannie.axis1.controller.config.vel_limit = int(limit * 1.1)
+        self._yannie.axis0.trap_traj.config.vel_limit = limit
+        self._yannie.axis1.trap_traj.config.vel_limit = limit
 
+    def get_y_vel_limit(self):
+        return self._yannie.axis0.trap_traj.config.vel_limit
+
+    def set_x_accel_limit(self, limit):
+        self._xavier.axis0.trap_traj.config.accel_limit = limit
+
+    def get_x_accel_limit(self):
+        return self._xavier.axis0.trap_traj.config.accel_limit
+    
+    def set_y_accel_limit(self, limit):
+        self._yannie.axis0.trap_traj.config.accel_limit = limit
+        self._yannie.axis1.trap_traj.config.accel_limit = limit
+
+    def get_y_accel_limit(self):
+        return self._yannie.axis0.trap_traj.config.accel_limit
+
+    def set_x_decel_limit(self, limit):
+        self._xavier.axis0.trap_traj.config.decel_limit = limit
+
+    def get_x_decel_limit(self):
+        return self._xavier.axis0.trap_traj.config.decel_limit
+
+    def set_y_decel_limit(self, limit):
+        self._yannie.axis0.trap_traj.config.decel_limit = limit
+        self._yannie.axis1.trap_traj.config.decel_limit = limit
+    
+    def get_y_decel_limit(self):
+        return self._yannie.axis0.trap_traj.config.decel_limit
+
+    def set_x_current_limit(self, limit):
+        self._xavier.axis0.motor.config.current_lim = limit
+    
+    def get_x_current_limit(self):
+        return self._xavier.axis0.motor.config.current_lim
+
+    def set_y_current_limit(self, limit):
+        self._yannie.axis0.motor.config.current_lim = limit
+        self._yannie.axis1.motor.config.current_lim = limit
+    
+    def get_y_current_limit(self):
+        return self._yannie.axis0.motor.config.current_lim
+
+    def set_x_A_per_css(self, A):
+        self._xavier.axis0.trap_traj.config.A_per_css = A
+
+    def get_x_A_per_css(self):
+        return self._xavier.axis0.trap_traj.config.A_per_css
+
+    def set_y_A_per_css(self, A):
+        self._yannie.axis0.trap_traj.config.A_per_css = A
+        self._yannie.axis1.trap_traj.config.A_per_css = A
+
+    def get_y_A_per_css(self):
+        return self._yannie.axis0.trap_traj.config.A_per_css
+        
     def get_x_pos(self):
         return self._xavier_axis0.get_pos()
     
@@ -99,6 +174,13 @@ class GGMotors(object):
     def set_y_pos_no_pid(self, pos):
         self._yannie_axis0.set_pos(pos)
         self._yannie_axis1.set_pos(pos)
+
+    def set_x_pos_trap(self, pos):
+        self._xavier_axis0.set_pos_trap(pos)
+
+    def set_y_pos_trap(self, pos):
+        self._yannie_axis0.set_pos_trap(pos)
+        self._yannie_axis1.set_pos_trap(pos)
 
     def set_y_vel_time(self, t, vel, d_kp=125, d_ki=0.4, d_kd=100):
 
@@ -222,13 +304,13 @@ class GGMotors(object):
 
             last_err = err
         
-    def circle(self, times, vel, x_kp=40, x_ki=0.0, x_kd=0.0, y_kp=40, y_ki=0.0, y_kd=0.0, dt=0.001, d_kp=125, d_ki=0.4, d_kd=100):
+    def circle(self, times, vel, x_kp=0.0002, x_ki=0.0, x_kd=0.0, y_kp=0.0002, y_ki=0.0, y_kd=0.0, dt=0.001, d_kp=0.000125, d_ki=0.0000004, d_kd=0.0001):
         self.set_x_pos_no_pid(-25000)
-        self.set_y_pos_vel_pid(-40000, 20000, kp=125, ki=0.4, kd=100)
+        self.set_y_pos_vel_pid(-30000, 20000, kp=125, ki=0.4, kd=100)
         time.sleep(2)
 
-        targ_x = 1 * 25000 - 40000
-        targ_y = 0 * 25000 - 40000
+        targ_x = 1 * 25000 - 50000
+        targ_y = 0 * 25000 - 30000
 
         x_err = 0
         x_err_sum = 0
@@ -249,8 +331,8 @@ class GGMotors(object):
 
         for x in range(0, times):
             for x in range(0, num_pieces):
-                targ_x = numpy.cos(x * piece) * 25000 - 40000
-                targ_y = numpy.sin(x * piece) * 25000 - 40000
+                targ_x = numpy.cos(x * piece) * 25000 - 50000
+                targ_y = numpy.sin(x * piece) * 25000 - 30000
 
                 x_err = self.get_x_pos() - targ_x
                 x_err_sum += x_err
@@ -283,23 +365,42 @@ class GGMotors(object):
 
     def circle_pos(self, times, vel, dt=0.001):
         self.set_x_pos_no_pid(-25000)
-        self.set_y_pos_vel_pid(-40000, 50000, kp=125, ki=0.4, kd=100)
+        self.set_y_pos_trap(-30000)
+        time.sleep(2)
+
+        targ_x = [1 * 25000 - 50000]
+        targ_y = [0 * 25000 - 30000]
+
+        num_pieces = int(50000 * math.pi / (vel * dt))
+        piece = vel * dt / 25000
+
+        mark = time.time()
+
+        for x in range(0, num_pieces):
+            targ_x.append(numpy.cos(x * piece) * 25000 - 50000)
+            targ_y.append(numpy.sin(x * piece) * 25000 - 30000)
+
+        for x in range(0, num_pieces):
+            while time.time() < mark + dt:
+                pass
+
+            self.set_x_pos_no_pid(targ_x[x])
+            self.set_y_pos_no_pid(targ_y[x])
+
+
+            mark = time.time()
+
+
+        self.set_x_vel_no_pid(0)
+        self.set_y_vel_no_pid(0)
+
+    def circle_trap(self, times, vel, dt=0.001):
+        self.set_x_pos_no_pid(-25000)
+        self.set_y_pos_vel_pid(-30000, 50000, kp=125, ki=0.4, kd=100)
         time.sleep(2)
 
         targ_x = 1 * 25000 - 50000
-        targ_y = 0 * 25000 - 40000
-
-        x_err = 0
-        x_err_sum = 0
-        x_last_err = 0
-
-        y_err = 0
-        y_err_sum = 0
-        y_last_err = 0
-
-        diff_err = 0
-        diff_err_sum = 0
-        diff_last_err = 0
+        targ_y = 0 * 25000 - 30000
 
         num_pieces = int(50000 * math.pi / (vel * dt))
         piece = vel * dt / 25000
@@ -309,22 +410,53 @@ class GGMotors(object):
         for x in range(0, times):
             for x in range(0, num_pieces):
                 targ_x = numpy.cos(x * piece) * 25000 - 50000
-                targ_y = numpy.sin(x * piece) * 25000 - 40000
+                targ_y = numpy.sin(x * piece) * 25000 - 30000
 
                 while time.time() < mark + dt and abs(self._yannie_axis0.get_pos() - self._yannie_axis1.get_pos()) > 200:
                     pass
 
-                self.set_x_pos_no_pid(targ_x)
-                self._yannie_axis0.set_pos(targ_y)
-                self._yannie_axis1.set_pos(targ_y)
-
+                self.set_x_pos_trap(targ_x)
+                self.set_y_pos_trap(targ_y)
                 mark = time.time()
 
+    def draw_test(self, p, vel, dt, scale=10):
+        stp_lng = abs(vel) * 0.1 * dt
+
+        plan = []
+
+        for x in range(0, p.__len__()):
+            l = p[x].length()
+            num_stp = int(l / stp_lng)
+            pt = []
+            for y in range(0, num_stp):
+                pt.append(p[x].point(stp_lng * y / l))
+            plan.append(pt)
+            print(";]")
+
+        self._blake.go_to_position(-1500)
+
+        for x in range(0, p.__len__()):
+            if(isinstance(p[x], svg.path.path.Move)):
+                self._blake.go_to_position(-2000)
+                self.set_x_pos_trap(-p[x].start.real * scale - 20000)
+                self.set_y_pos_trap(-p[x].start.imag * scale - 10000)
+
+                while self.is_x_busy() or self.is_y_busy():
+                    pass
+                self._blake.go_to_position(-1500)
+            else:
+                mark = time.time()
+                for stp in plan[x]:
+                    self.set_x_pos_no_pid(-stp.real * scale - 20000)
+                    self.set_y_pos_no_pid(-stp.imag * scale - 10000)
+                    while time.time() < mark + dt:
+                        pass
+                    mark = time.time()
 
         self.set_x_vel_no_pid(0)
         self.set_y_vel_no_pid(0)
+        self._blake.go_to_position(-2000)
 
-                
 
 
     def set_x_zero(self):
@@ -334,3 +466,8 @@ class GGMotors(object):
         self._yannie_axis0.set_zero(self._yannie_axis0.get_raw_pos())
         self._yannie_axis1.set_zero(self._yannie_axis1.get_raw_pos())
 
+    def is_x_busy(self):
+        return self._xavier_axis0.is_busy()
+
+    def is_y_busy(self):
+        return self._yannie_axis0.is_busy() or self._yannie_axis1.is_busy()
