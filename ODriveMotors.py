@@ -5,6 +5,7 @@ import ODrive_Ease_Lib
 import time
 import usb.core
 import svg.path
+from xml.dom import minidom
 import numpy
 import math
 from pidev import stepper
@@ -79,7 +80,7 @@ class GGMotors(object):
 
         self.set_x_zero()
         self.set_y_zero()
-        self._blake.go_to_position(-2000)
+        self._blake.go_to_position(-1800)
 
     def set_x_vel_no_pid(self, vel):
         self._xavier_axis0.set_vel(vel)
@@ -419,43 +420,115 @@ class GGMotors(object):
                 self.set_y_pos_trap(targ_y)
                 mark = time.time()
 
-    def draw_test(self, p, vel, dt, scale=10):
-        stp_lng = abs(vel) * 0.1 * dt
+    def calc_draw(self, file_name, save_name, scale=10, vel=10000, dt=0.005):
+        doc = minidom.parse(file_name)
+        path_strings = [path.getAttribute('d') for path in doc.getElementsByTagName('path')]
+        paths = []
 
-        plan = []
+        for p in path_strings:
+            paths.append(svg.path.parse_path(p))
 
-        for x in range(0, p.__len__()):
-            l = p[x].length()
-            num_stp = int(l / stp_lng)
-            pt = []
-            for y in range(0, num_stp):
-                pt.append(p[x].point(stp_lng * y / l))
-            plan.append(pt)
-            print(";]")
+        stp_lng = abs(vel) * dt / scale
+        plans = []
+        num_paths = len(paths)
+        
+        for i in range(0, num_paths):
 
-        self._blake.go_to_position(-1500)
+            plan = []
+            num_segments = len(paths[i])
 
-        for x in range(0, p.__len__()):
-            if(isinstance(p[x], svg.path.path.Move)):
-                self._blake.go_to_position(-2000)
-                self.set_x_pos_trap(-p[x].start.real * scale - 20000)
-                self.set_y_pos_trap(-p[x].start.imag * scale - 10000)
+            for x in range(0, num_segments):
+                l = paths[i][x].length()
+                num_stp = int(l / stp_lng)
+                pt = []
 
-                while self.is_x_busy() or self.is_y_busy():
-                    pass
-                self._blake.go_to_position(-1500)
-            else:
-                mark = time.time()
-                for stp in plan[x]:
-                    self.set_x_pos_no_pid(-stp.real * scale - 20000)
-                    self.set_y_pos_no_pid(-stp.imag * scale - 10000)
-                    while time.time() < mark + dt:
+                for y in range(0, num_stp):
+                    pt.append(paths[i][x].point(stp_lng * y / l))
+                    if(pt[y].real * scale > 120000 or pt[y].imag * scale > 50000):
+                        print(str(pt[y].real) + " " + str(pt[y].imag))
+                        return
+
+                plan.append(pt)
+                print("Segment " + str(x) + " of " + str(num_segments))
+
+            plans.append(plan)
+            print("Path " + str(i) + " of " + str(num_paths))
+
+        numpy.save(save_name + "_plans", plans)
+        numpy.save(save_name + "_paths", paths, allow_pickle=True)
+
+
+    def draw_from_file(self, file_name, scale=10, vel=10000, dt=0.005):
+        plans = numpy.load(file_name + "_plans.npy")
+        paths = numpy.load(file_name + "_paths.npy", allow_pickle=True)
+
+        for i in range(0, len(paths)):
+            for x in range(0, len(paths[i])):
+                if(isinstance(paths[i][x], svg.path.path.Move)):
+                    self._blake.go_to_position(-1800)
+                    self.set_x_pos_trap(-paths[i][x].start.real * scale - 20000)
+                    self.set_y_pos_trap(-paths[i][x].start.imag * scale - 5000)
+                    time.sleep(0.25)
+                    while self.is_x_busy() or self.is_y_busy():
                         pass
+                    time.sleep(0.25)
+                else:
+                    self._blake.go_to_position(-1600)
                     mark = time.time()
+                    for stp in plans[i][x]:
+                        self.set_x_pos_no_pid(-stp.real * scale - 20000)
+                        self.set_y_pos_no_pid(-stp.imag * scale - 5000)
+                        while time.time() < mark + dt:
+                            pass
+                        mark = time.time()
+            self.set_x_vel_no_pid(0)
+            self.set_y_vel_no_pid(0)
+            self._blake.go_to_position(-1800)
 
-        self.set_x_vel_no_pid(0)
-        self.set_y_vel_no_pid(0)
-        self._blake.go_to_position(-2000)
+
+
+    def draw_test(self, paths, vel, dt, scale=10):
+        stp_lng = abs(vel) * dt / scale
+        plans = []
+        for i in range(0, len(paths)):
+            
+            plan = []
+
+            for x in range(0, paths[i].__len__()):
+                l = paths[i][x].length()
+                num_stp = int(l / stp_lng)
+                pt = []
+                for y in range(0, num_stp):
+                    pt.append(paths[i][x].point(stp_lng * y / l))
+                plan.append(pt)
+                print(";]")
+            plans.append(plan)
+            print("Path " + str(i) + " calculated")
+
+        for i in range(0, len(paths)):
+
+            for x in range(0, paths[i].__len__()):
+                if(isinstance(paths[i][x], svg.path.path.Move)):
+                    self._blake.go_to_position(-1800)
+                    self.set_x_pos_trap(-paths[i][x].start.real * scale - 20000)
+                    self.set_y_pos_trap(-paths[i][x].start.imag * scale - 10000)
+                    time.sleep(0.25)
+                    while self.is_x_busy() or self.is_y_busy():
+                        pass
+                    time.sleep(0.25)
+                else:
+                    self._blake.go_to_position(-1600)
+                    mark = time.time()
+                    for stp in plans[i][x]:
+                        self.set_x_pos_no_pid(-stp.real * scale - 20000)
+                        self.set_y_pos_no_pid(-stp.imag * scale - 10000)
+                        while time.time() < mark + dt:
+                            pass
+                        mark = time.time()
+
+            self.set_x_vel_no_pid(0)
+            self.set_y_vel_no_pid(0)
+            self._blake.go_to_position(-1800)
 
 
 
