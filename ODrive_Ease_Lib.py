@@ -51,6 +51,12 @@ class ODrive_Axis(object):
         self.axis.controller.config.control_mode = CTRL_MODE_POSITION_CONTROL
         self.axis.controller.pos_setpoint = desired_pos
 
+    def set_pos_trap(self, pos):
+        desired_pos = pos + self.zero
+        self.axis.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
+        self.axis.controller.config.control_mode = CTRL_MODE_TRAJECTORY_CONTROL
+        self.axis.controller.move_to_pos(desired_pos)
+
     def set_curr_limit(self, val):
         self.axis.motor.config.current_lim = val
 
