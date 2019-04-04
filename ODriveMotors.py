@@ -8,7 +8,6 @@ import svg.path
 from xml.dom import minidom
 import numpy
 import math
-from pidev import stepper
 
 # for future note: two motor vert serial # 61951538836535
 #                  one motor hori serial # 61985896477751
@@ -54,9 +53,9 @@ class GGMotors(object):
             if time.time() - start > 15:
                 print("could not calibrate, try rebooting odrive")
                 return
-        self._blake = stepper(port=1, microsteps=32, spd = 1000)
-        self._blake.set_max_speed(1000)
-        self._blake.set_speed(100)
+#        self._blake = stepper(port=1, microsteps=32, spd = 1000)
+#        self._blake.set_max_speed(1000)
+#        self._blake.set_speed(100)
         self.set_x_vel_limit(500000)
         self.set_y_vel_limit(500000)
         self.set_x_accel_limit(1000000)
@@ -74,13 +73,13 @@ class GGMotors(object):
         self.set_x_vel_no_pid(50000)
         self.set_y_vel_no_pid(100000)
         time.sleep(8)
-        self._blake.home(1)
+#        self._blake.home(1)
         self.set_x_vel_no_pid(0)
         self.set_y_vel_no_pid(0)
 
         self.set_x_zero()
         self.set_y_zero()
-        self._blake.go_to_position(-1800)
+#        self._blake.go_to_position(-1800)
 
     def set_x_vel_no_pid(self, vel):
         self._xavier_axis0.set_vel(vel)
@@ -375,19 +374,20 @@ class GGMotors(object):
         num_pieces = int(50000 * math.pi / (vel * dt))
         piece = vel * dt / 25000
 
-        mark = time.time()
-
         for x in range(0, num_pieces):
             targ_x.append(numpy.cos(x * piece) * 25000 - 50000)
             targ_y.append(numpy.sin(x * piece) * 25000 - 30000)
 
-        for x in range(0, num_pieces):
-            while time.time() < mark + dt:
-                pass
+        mark = time.time()
 
+        for x in range(0, num_pieces):
             self.set_x_pos_no_pid(targ_x[x])
             self.set_y_pos_no_pid(targ_y[x])
+            
+            print(time.time() - mark)
 
+            while time.time() < mark + dt:
+                pass
 
             mark = time.time()
 
