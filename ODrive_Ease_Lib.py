@@ -2,15 +2,15 @@ import odrive
 from odrive.enums import *
 import time
 
-# Used to make using the ODrive easier Version 1.3.2
-# Last update December 10, 2018 by Blake Lazarine
+# Used to make using the ODrive easier Version 1.3.3
+# Last update April 9, 2019 by Blake Lazarine
 
 class ODrive_Axis(object):
 
-    def __init__(self, axis):
+    def __init__(self, axis, vel_lim=20000):
         self.axis = axis
         self.zero = 0;
-        self.axis.controller.config.vel_limit = 20000
+        self.axis.controller.config.vel_limit = vel_lim
 
     def calibrate(self):
         self.axis.requested_state = AXIS_STATE_FULL_CALIBRATION_SEQUENCE
