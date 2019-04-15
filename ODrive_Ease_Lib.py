@@ -1,9 +1,22 @@
 import odrive
 from odrive.enums import *
 import time
+import usb.core
 
-# Used to make using the ODrive easier Version 1.3.3
-# Last update April 9, 2019 by Blake Lazarine
+# Used to make using the ODrive easier Version 1.4.0
+# Last update April 15, 2019 by Blake Lazarine
+
+def find_ODrives():
+    dev = usb.core.find(find_all=1, idVendor=0x1209, idProduct=0x0d32)
+    od = []
+    try:
+        while True:
+            a = next(dev)
+            od.append(odrive.find_any('usb:%s:%s' % (a.bus, a.address)))
+            print('added')
+    except:
+        pass
+    return od
 
 class ODrive_Axis(object):
 
