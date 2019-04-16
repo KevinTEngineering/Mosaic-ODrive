@@ -191,7 +191,7 @@ class ODrive_Axis(object):
         return self.axis.motor.current_meas_phC
 
 
-class 2d_ODrive(object):
+class double_ODrive(object):
     
     #ax_X and ax_Y are ODrive_Axis objects
     def init(self, ax_X, ax_Y):
