@@ -3,8 +3,8 @@ from odrive.enums import *
 import time
 import usb.core
 
-# Used to make using the ODrive easier Version 1.4.0
-# Last update April 15, 2019 by Blake Lazarine
+# Used to make using the ODrive easier Version 2.0
+# Last update April 16, 2019 by Blake Lazarine
 
 def find_ODrives():
     dev = usb.core.find(find_all=1, idVendor=0x1209, idProduct=0x0d32)
@@ -191,7 +191,47 @@ class ODrive_Axis(object):
         return self.axis.motor.current_meas_phC
 
 
-print('ODrive Ease Lib 1.3.2')
+class 2d_ODrive(object):
+    
+    #ax_X and ax_Y are ODrive_Axis objects
+    def init(self, ax_X, ax_Y):
+        self.y = ax_X
+        self.x = ax_Y
+
+    def calibrate(self):
+        self.x.axis.requested_state = AXIS_STATE_FULL_CALIBRATION_SEQUENCE
+        self.y.axis.requested_state = AXIS_STATE_FULL_CALIBRATION_SEQUENCE
+        start = time.time()
+        while self.x.axis.current_state != AXIS_STATE_IDLE or self.x.axis.current_state != AXIS_STATE_IDLE:
+            time.sleep(0.1)
+            if time.time() - start > 15:
+                print('could not calibrate, try rebooting odrive')
+                return False
+
+    def get_pos(self):
+        return [x.get_pos, y.get_pos()]
+
+    def set_pos(self, pos_x, pos_y):
+        x.set_pos(pos_x)
+        y.set_pos(pos_y)
+
+    def home_with_vel(vel_x, vel_y):
+        x.set_vel(vel_x)
+        y.set_vel(vel_y)
+
+        while(x.is_busy() or y.is_busy()):
+            time.sleep(0.3)
+
+        time.sleep(1)
+        x.set_zero(x.get_raw_pos())
+        y.set_zero(y.get_raw_pos())
+
+        print("done homing")
+
+
+
+
+print('ODrive Ease Lib 2.0')
 '''
 odrv0 = odrive.find_any()
 print(str(odrv0.vbus_voltage))
