@@ -194,7 +194,7 @@ class ODrive_Axis(object):
 class double_ODrive(object):
     
     #ax_X and ax_Y are ODrive_Axis objects
-    def init(self, ax_X, ax_Y):
+    def __init__(self, ax_X, ax_Y):
         self.y = ax_X
         self.x = ax_Y
 
