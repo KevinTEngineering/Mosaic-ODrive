@@ -209,13 +209,13 @@ class double_ODrive(object):
                 return False
 
     def get_pos(self):
-        return [x.get_pos, y.get_pos()]
+        return [self.x.get_pos, self.y.get_pos()]
 
     def set_pos(self, pos_x, pos_y):
         self.x.set_pos(pos_x)
         self.y.set_pos(pos_y)
 
-    def home_with_vel(vel_x, vel_y):
+    def home_with_vel(self, vel_x, vel_y):
         self.x.set_vel(vel_x)
         self.y.set_vel(vel_y)
 
@@ -223,8 +223,8 @@ class double_ODrive(object):
             time.sleep(0.3)
 
         time.sleep(1)
-        self.x.set_zero(x.get_raw_pos())
-        self.y.set_zero(y.get_raw_pos())
+        self.x.set_zero(self.x.get_raw_pos())
+        self.y.set_zero(self.y.get_raw_pos())
 
         print("done homing")
 
