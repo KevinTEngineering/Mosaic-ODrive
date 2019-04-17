@@ -3,8 +3,8 @@ from odrive.enums import *
 import time
 import usb.core
 
-# Used to make using the ODrive easier Version 2.0
-# Last update April 16, 2019 by Blake Lazarine
+# Used to make using the ODrive easier Version 2.0.1
+# Last update April 17, 2019 by Blake Lazarine
 
 def find_ODrives():
     dev = usb.core.find(find_all=1, idVendor=0x1209, idProduct=0x0d32)
@@ -212,26 +212,26 @@ class double_ODrive(object):
         return [x.get_pos, y.get_pos()]
 
     def set_pos(self, pos_x, pos_y):
-        x.set_pos(pos_x)
-        y.set_pos(pos_y)
+        self.x.set_pos(pos_x)
+        self.y.set_pos(pos_y)
 
     def home_with_vel(vel_x, vel_y):
-        x.set_vel(vel_x)
-        y.set_vel(vel_y)
+        self.x.set_vel(vel_x)
+        self.y.set_vel(vel_y)
 
-        while(x.is_busy() or y.is_busy()):
+        while(self.x.is_busy() or self.y.is_busy()):
             time.sleep(0.3)
 
         time.sleep(1)
-        x.set_zero(x.get_raw_pos())
-        y.set_zero(y.get_raw_pos())
+        self.x.set_zero(x.get_raw_pos())
+        self.y.set_zero(y.get_raw_pos())
 
         print("done homing")
 
 
 
 
-print('ODrive Ease Lib 2.0')
+print('ODrive Ease Lib 2.0.1')
 '''
 odrv0 = odrive.find_any()
 print(str(odrv0.vbus_voltage))
