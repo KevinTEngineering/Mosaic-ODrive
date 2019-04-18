@@ -218,7 +218,7 @@ class double_ODrive(object):
     def home_with_vel(self, vel_x, vel_y):
         self.x.set_vel(vel_x)
         self.y.set_vel(vel_y)
-
+        time.sleep(1)
         while(self.x.is_busy() or self.y.is_busy()):
             time.sleep(0.3)
 
