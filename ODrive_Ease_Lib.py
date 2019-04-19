@@ -3,8 +3,8 @@ from odrive.enums import *
 import time
 import usb.core
 
-# Used to make using the ODrive easier Version 2.0.1
-# Last update April 17, 2019 by Blake Lazarine
+# Used to make using the ODrive easier Version 2.1
+# Last update April 19, 2019 by Blake Lazarine
 
 def find_ODrives():
     dev = usb.core.find(find_all=1, idVendor=0x1209, idProduct=0x0d32)
@@ -225,13 +225,32 @@ class double_ODrive(object):
         time.sleep(1)
         self.x.set_zero(self.x.get_raw_pos())
         self.y.set_zero(self.y.get_raw_pos())
-
         print("done homing")
+    
+    #only use with Wetmelon's endstop firmware
+    def home_with_endstops(self, vel_x, vel_y):
+        self.x.axis.min_endstop.config.enabled = True
+        self.x.axis.max_endstop.config.enabled = True
+        self.y.axis.min_endstop.confid.enabled = True
+        self.y.axis.max_endstop.config.enabled = True
+        self.x.set_vel(vel_x)
+        self.y.set_vel(vel_y)
+        while(self.x.axis.error == 0 or self.y.axis.error == 0):
+            pass
+        if self.x.axis.error == 0x800 or self.x.axis.error == 0x1000:
+            self.x.set_zero(self.x.get_raw_pos())
+            self.x.axis.error = 0
+        
+        if self.y.axis.error == 0x800 or self.y.axis.error == 0x1000:
+            self.y.set_zero(self.y.get_raw_pos())
+            self.y.axis.error = 0
 
+        self.x.axis.min_endstop.config.enabled = False
+        self.x.axis.max_endstop.config.enabled = False
+        self.y.axis.min_endstop.confid.enabled = False
+        self.y.axis.max_endstop.config.enabled = False
 
-
-
-print('ODrive Ease Lib 2.0.1')
+print('ODrive Ease Lib 2.1')
 '''
 odrv0 = odrive.find_any()
 print(str(odrv0.vbus_voltage))
