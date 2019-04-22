@@ -3,8 +3,8 @@ from odrive.enums import *
 import time
 import usb.core
 
-# Used to make using the ODrive easier Version 2.1
-# Last update April 19, 2019 by Blake Lazarine
+# Used to make using the ODrive easier Version 2.2
+# Last update April 20, 2019 by Blake Lazarine
 
 def find_ODrives():
     dev = usb.core.find(find_all=1, idVendor=0x1209, idProduct=0x0d32)
@@ -34,6 +34,14 @@ class ODrive_Axis(object):
                 print("could not calibrate, try rebooting odrive")
                 return False
 
+    def calibrate_encoder(self):
+        self.axis.requested_state = AXIS_STATE_ENCODER_OFFSET_CALIBRATION
+        start = time.time()
+        while self.axis.current_state != AXIS_STATE_IDLE:
+            time.sleep(0.1)
+            if time.time() - start > 15:
+                print("could not calibrate, try rebooting odrive")
+                return False
 
     def is_calibrated(self):
         return self.axis.motor.is_calibrated
@@ -250,7 +258,7 @@ class double_ODrive(object):
         self.y.axis.min_endstop.confid.enabled = False
         self.y.axis.max_endstop.config.enabled = False
 
-print('ODrive Ease Lib 2.1')
+print('ODrive Ease Lib 2.2')
 '''
 odrv0 = odrive.find_any()
 print(str(odrv0.vbus_voltage))
