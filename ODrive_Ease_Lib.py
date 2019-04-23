@@ -3,7 +3,7 @@ from odrive.enums import *
 import time
 import usb.core
 
-# Used to make using the ODrive easier Version 2.2.1
+# Used to make using the ODrive easier Version 2.3
 # Last update April 23, 2019 by Blake Lazarine
 
 def find_ODrives():
@@ -192,7 +192,21 @@ class ODrive_Axis(object):
 
         print('ODrive homed correctly')
         return True
-
+    
+	#only use with Wetmelon's endstop firmware
+    def home_with_endstops(self, vel):
+        self.axis.min_endstop.config.enabled = True
+        self.axis.max_endstop.config.enabled = True
+        self.set_vel(vel)
+        while(self.axis.error == 0):
+            pass
+        if self.axis.error == 0x800 or self.axis.error == 0x1000:
+            self.set_zero(self.get_raw_pos())
+            self.axis.error = 0
+        
+        self.axis.min_endstop.config.enabled = False
+        self.axis.max_endstop.config.enabled = False
+	
     #returns phase B current going into motor
     def get_curr_B(self):
         return self.axis.motor.current_meas_phB
@@ -261,7 +275,7 @@ class double_ODrive(object):
         self.y.axis.min_endstop.confid.enabled = False
         self.y.axis.max_endstop.config.enabled = False
 
-print('ODrive Ease Lib 2.2.1')
+print('ODrive Ease Lib 2.3')
 '''
 odrv0 = odrive.find_any()
 print(str(odrv0.vbus_voltage))
