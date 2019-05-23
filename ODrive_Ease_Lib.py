@@ -69,8 +69,8 @@ class ODrive_Axis(object):
         self.zero = pos
 		
 	#sets the zero to the current_position
-	def set_home(self):
-		self.zero = self.get_raw_pos()
+    def set_home(self):
+        self.zero = self.get_raw_pos()
 
     #returns the current position relative to the home
     def get_pos(self):
@@ -310,9 +310,9 @@ class double_ODrive(object):
 #calibrates a list of ODrive_Axis objects the minimal amount
 def calibrate_list(odrives):
     calibrated = []
-	i = 0
+    i = 0
     for o in odrives:
-		calibrated.append(False)
+	calibrated.append(False)
         if o.axis.motor.is_calibrated:
             if o.axis.encoder.is_ready:
                 calibrated[-1] = True
@@ -323,12 +323,12 @@ def calibrate_list(odrives):
     is_done = False
 	
     while not is_done:
-	    i = -1
+        i = -1
         for o in odrives:
-		    i+=1
+	    i+=1
             if o.axis.current_state == AXIS_STATE_IDLE or calibrated[i] == True:
                 calibrated[i] = True
-				continue
+		continue
             else:
                 time.sleep(0.2)
                 break
