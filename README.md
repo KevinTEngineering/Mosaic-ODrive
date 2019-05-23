@@ -1,5 +1,6 @@
 # RPi_ODrive
 Using RPi with ODrive v3.5 or v3.6 Motor Controller
+
 So you decided to use ODrive, huh? Well well well do I have some info for you.
 
 ## Genreal Usage
@@ -15,8 +16,18 @@ odrv = odrive.find_any()
 To connect to multiple odrive boards simultaneously is a little more complicated. The easiest way is to import the ODrive_Ease_Lib file from this repo and run the ```od = find_ODrives()``` method
 
 The easiest way to control the ODrive is though the ODrive_Ease_Lib Library, since it condenses commonly used commands into singular, short, and intuitive lines. The only major issue with this is that it can send redundant commands. This is not a problem for most situations (where very rapid updates are not required). But in situations like in the Gantry Game or the conference sand table where complex paths are determined by rapidly updating pos_setpoint, the latency can be a problem. The best way of going around this is to just use the native odrive commands where you set the axis requested state and controller control mode a singular time then during updates, only change the pos_setpoint.
+It is possible that some of the fields used by ODrive_Ease_Lib are renamed or moved in later versions of the ODrive firmware. This was the case before where the measured velocity from the encoder was previously pll_vel, whereas now it is vel_estimate. 
 
 ## Calibrating
+There are multiple degrees of calibration: none, motor, encoder, complete. Usually, having a calibrated encoder is the same as having a complete calibration. 
+
+A complete calibration sequence can be run by setting an axis' requested state to AXIS_STATE_FULL_CALIBRATION_SEQUENCE. This will run both motor and encoder calibration. This is seen as the motor twitching and making a loud beep then moving slightly to each side before stopping. 
+
+A motor calibration will cause the motor to twitch and then make a beep. You can maintain motor calibration between reboots by setting odrv.axis.motor.config.pre_calibrated to True then running odrv.save_configuration() and odrv.reboot()
+
+An encoder offset calibration must be run after motor calibration. It has the motor move to one side and then the other. If the motor is not able to do this, it will throw an error. While you cannot completely retain encoder calibration between reboots, you can use the encoder index search by following the instructions on the odrive docs.
+
+In ODrive_Ease_Lib, I have a method which accepts a list of ODrive_Axis objects and simultaneously calibrates each of them the minimal amount required. This saves time and energy when dealing with multiple motors.
 
 ## Troubleshooting with ODrive!
 
@@ -43,7 +54,7 @@ Axis errors
 Other probelms
 Sometimes communication to the ODrive cuts out - Yeah thats weird, but it happens. If you are connecting from a device through a USB Hub, sometimes this happens. Try Using a different model USB hub. This happsn often with the type the DPEA has for every surface. Sometimes the problem can be fixed with a reflash of firmware (sent through the ST Link). Also, if you are connecting to a windows computer, sometimes you have to power cycle the ODrive to make it reconnect after a reboot. Windows be whack.
 
-Also if there are different problems, check the ODrive forums/discord. Or if that doesn't work you can send me an email at blakelazarine@dpengineering.org. I will keep notifications on for this email but if I dont reply within a couple of days Mr. Harlow and Mr. Shaeer have my phone number and could send me a text / call me.
+Also if there are different problems, check the ODrive forums/discord. Or if that doesn't work you can send me an email at blakelazarine@dpengineering.org. I will keep notifications on for this email but if I dont reply Mr. Harlow and Mr. Shaeer have my phone number and could send me a text / call me.
 
 ## Hoverboard
 
