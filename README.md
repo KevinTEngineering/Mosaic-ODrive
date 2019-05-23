@@ -32,6 +32,7 @@ Axis errors
 
 0x100 - 256 - Encoder failure. This can have a number of causes and solutions. Check the encoder error
     Encoder errors
+    
     0x02 - 2 - intended CPR not reached. Can be a few issues. Most common is that the motor needs more calibration current. This can be fixed by increasing the calibration current. I think you also need to have the current limit higher than the calibration current but im not certain about this. Next check that the cpr of the encoder is the same as the cpr expected by the odrive. Most of our encoders are 8096 cpr by default but some are 4096. The ODrive expects 8092 by default, so its usually fine. Sometimes wiring issues also cause this problem, but that is uncommon. Its also possible the encoder is kind of broken.
 
     0x04 - 4 - no signal from encoder. Either the encoder is not corrently wired, or the encoder is broken. Or there is something else but I haven't had this happen yet.
