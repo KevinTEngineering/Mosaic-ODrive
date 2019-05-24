@@ -5,8 +5,8 @@ import usb.core
 from odrive.enums import *
 
 
-# Used to make using the ODrive easier Version 2.4
-# Last update May 22, 2019 by Blake Lazarine
+# Used to make using the ODrive easier Version 2.5
+# Last update May 24, 2019 by Blake Lazarine
 
 def find_ODrives():
     dev = usb.core.find(find_all=1, idVendor=0x1209, idProduct=0x0d32)
@@ -19,6 +19,14 @@ def find_ODrives():
     except:
         pass
     return od
+
+
+# Reboots a singular odrive. You will need to reconnect to it in your code after rebooting
+def reboot_ODrive(od):
+    try:
+        od.reboot()
+    except:
+        print('rebooted')
 
 
 class ODrive_Axis(object):
@@ -250,6 +258,14 @@ class ODrive_Axis(object):
     def get_curr_C(self):
         return self.axis.motor.current_meas_phC
 
+    # Clears all the errors on the axis
+    def clear_errors(self):
+        self.axis.error = 0
+        self.axis.encoder.error = 0
+        self.axis.motor.error = 0
+        self.axis.controller.error = 0
+        #There is also sensorless estimator errors but those are super rare and I am not sure what the object field is called to ima just leave it
+
 
 class double_ODrive(object):
 
@@ -340,7 +356,7 @@ def calibrate_list(odrives):
             is_done = True
 
 
-print('ODrive Ease Lib 2.4')
+print('ODrive Ease Lib 2.5')
 '''
 odrv0 = odrive.find_any()
 print(str(odrv0.vbus_voltage))

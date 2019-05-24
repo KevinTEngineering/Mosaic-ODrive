@@ -55,6 +55,7 @@ Other probelms
 Sometimes communication to the ODrive cuts out - Yeah thats weird, but it happens. If you are connecting from a device through a USB Hub, sometimes this happens. Try Using a different model USB hub. This happsn often with the type the DPEA has for every surface. Sometimes the problem can be fixed with a reflash of firmware (sent through the ST Link). Also, if you are connecting to a windows computer, sometimes you have to power cycle the ODrive to make it reconnect after a reboot. Windows be whack.
 
 Also if there are different problems, check the ODrive forums/discord. Or if that doesn't work you can send me an email at blakelazarine@dpengineering.org. I will keep notifications on for this email but if I dont reply Mr. Harlow and Mr. Shaeer have my phone number and could send me a text / call me.
+By the way, if you get an error but fix it to the point where you think it won't happen again, you can set the errors to 0 (on the axis and on the specific part of the axis (like encoder, motor, controller, etc)). I made a method in ODrive_Ease_Lib which clears the errors, so that's there if you want it. I also have a method for rebooting an ODrive, which can be useful in troubleshooting.
 
 ## Hoverboard
 
