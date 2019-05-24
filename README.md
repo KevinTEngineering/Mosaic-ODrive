@@ -59,12 +59,17 @@ Also if there are different problems, check the ODrive forums/discord. Or if tha
 ## Hoverboard
 
 ## Flashing Firmware
+There are two primary ways of flashing firmware to the ODrive, instructions for both of which can be found on the odrive tool section of the odrive docs. ODrivetool dfu is done over usb and is useful for updating the firmware on odrive boards that already work perfectly (make sure to use sudo when doing this). The ST Link is used in doing other firmware changes or when dealing with boards that are experiencing firmware issues. We have an ST Link in house with the wires taped in the correct order, which can be found on the odrive docs in case the tape is removed or something changes. For making custom firmware or using the firmware for endstops or something else, you need to compile the firmware files. The ODrive docs have instructions for setting up your device to do this, but they did not work for me without a significant amount of troubleshooting, the exact process of which I do not remember. You should be able to use my old surface (the one labelled Blake Lazarine, its one of the two running linux) to make it work though.
 
 ## Using endstops
+Github User and ODrive admin Wetmelon made a branch that uses the GPIO pins for endstops. As of right now, it only uses GPIO pins 2 and 8. I found a way of making the other ones work also, but it seemed too easy and obvious so I think it must cause other problems. (MESSAGE TO MYSELF: WRITE WHAT THAT THING WAS). When you clone the branch, navigate to the Firmware directory and modify the tup.config file, then run ```make```. This will create a build directory. In there will be files ODriveFirmware.elf and ODriveFirmware.hex. I usually use the elf file here but the hex file is also probably fine. In this firmware, if you enable the endstops, it will return an error whenever the endstop is reached, halting the motor's motion. The error can be removed by setting the axis.error to 0 before trying to move again. In ODrive_Ease_Lib I have a method for homing using endstops.
 
 ## writing firmware
+If you want to make your own firmware, you can just clone the odrive master branch and make modifications. Paul made a branch for deteceting sensor info without forcing a stop.
+Generally, you just want to follow the firmware developer guide from the odrive docs.
 
 ## Sensorless mode
+Sensorless mode is dumb but you need to use it sometimes, like when you are putting the motor into a lathe to center a pin.
 
 ## Using index search
 
