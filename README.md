@@ -13,7 +13,7 @@ Then you will be able to connect to an ODrive using the command
 ```python
 odrv = odrive.find_any()
 ```
-To connect to multiple odrive boards simultaneously is a little more complicated. The easiest way is to import the ODrive_Ease_Lib file from this repo and run the ```od = find_ODrives()``` method
+To connect to multiple odrive boards simultaneously is a little more complicated. The easiest way is to import the ODrive_Ease_Lib file from this repo and run the ```od = ODrive_Ease_Lib.find_ODrives()``` method
 
 The easiest way to control the ODrive is though the ODrive_Ease_Lib Library, since it condenses commonly used commands into singular, short, and intuitive lines. The only major issue with this is that it can send redundant commands. This is not a problem for most situations (where very rapid updates are not required). But in situations like in the Gantry Game or the conference sand table where complex paths are determined by rapidly updating pos_setpoint, the latency can be a problem. The best way of going around this is to just use the native odrive commands where you set the axis requested state and controller control mode a singular time then during updates, only change the pos_setpoint.
 It is possible that some of the fields used by ODrive_Ease_Lib are renamed or moved in later versions of the ODrive firmware. This was the case before where the measured velocity from the encoder was previously pll_vel, whereas now it is vel_estimate. 
@@ -58,38 +58,24 @@ Also if there are different problems, check the ODrive forums/discord. Or if tha
 By the way, if you get an error but fix it to the point where you think it won't happen again, you can set the errors to 0 (on the axis and on the specific part of the axis (like encoder, motor, controller, etc)). I made a method in ODrive_Ease_Lib which clears the errors, so that's there if you want it. I also have a method for rebooting an ODrive, which can be useful in troubleshooting.
 
 ## Hoverboard
+The hoverboard motors are best for use in high-precision situations, such as ones where large amounts of power is needed but the range of travel is small, like in the delta arm. There is a hoverboard motor guide on the odriev docs, which is very helpful up until a certain point. The guide encourages use of the hall effect sensor that is built in to the hoverboard motor. This is bad because the hall effect sensor only has 90 cpr and is just overall not as good as using a real encoder. So, you should follow this guide while making sure to leave out the parts dealing with the encoder / hall effect sensor. Some of the encoders we use with the hoverboard motors have 4096 cpr not 8192, so you might have to set the cpr by going into odrv.axis.encoder.config.cpr before calibration.
 
 ## Flashing Firmware
 There are two primary ways of flashing firmware to the ODrive, instructions for both of which can be found on the odrive tool section of the odrive docs. ODrivetool dfu is done over usb and is useful for updating the firmware on odrive boards that already work perfectly (make sure to use sudo when doing this). The ST Link is used in doing other firmware changes or when dealing with boards that are experiencing firmware issues. We have an ST Link in house with the wires taped in the correct order, which can be found on the odrive docs in case the tape is removed or something changes. For making custom firmware or using the firmware for endstops or something else, you need to compile the firmware files. The ODrive docs have instructions for setting up your device to do this, but they did not work for me without a significant amount of troubleshooting, the exact process of which I do not remember. You should be able to use my old surface (the one labelled Blake Lazarine, its one of the two running linux) to make it work though.
 
 ## Using endstops
-Github User and ODrive admin Wetmelon made a branch that uses the GPIO pins for endstops. As of right now, it only uses GPIO pins 2 and 8. I found a way of making the other ones work also, but it seemed too easy and obvious so I think it must cause other problems. (MESSAGE TO MYSELF: WRITE WHAT THAT THING WAS). When you clone the branch, navigate to the Firmware directory and modify the tup.config file, then run ```make```. This will create a build directory. In there will be files ODriveFirmware.elf and ODriveFirmware.hex. I usually use the elf file here but the hex file is also probably fine. In this firmware, if you enable the endstops, it will return an error whenever the endstop is reached, halting the motor's motion. The error can be removed by setting the axis.error to 0 before trying to move again. In ODrive_Ease_Lib I have a method for homing using endstops.
+Github User and ODrive admin Wetmelon made a branch that uses the GPIO pins for endstops. As of right now, it only uses GPIO pins 2 and 8. I found a way of making the other ones work also, but it seemed too easy and obvious so I think it must cause other problems.
+In the ODrive Firmware/Board/v3/Src/gpio.c, there is a method header IRQn_Type get_irq_number(uint16_t pin) {. In the large switch statement in this method, there are cases for each GPIO pin. In this statement, the GPIO pin labelled 2 is case 9 (add 7). You can see that only cases 9 and 15 have something assigned to the case.
+When you clone the branch, navigate to the Firmware directory and modify the tup.config file, then run ```make```. This will create a build directory. In there will be files ODriveFirmware.elf and ODriveFirmware.hex. I usually use the elf file here but the hex file is also probably fine. In this firmware, if you enable the endstops, it will return an error whenever the endstop is reached, halting the motor's motion. The error can be removed by setting the axis.error to 0 before trying to move again. In ODrive_Ease_Lib I have a method for homing using endstops.
 
 ## writing firmware
 If you want to make your own firmware, you can just clone the odrive master branch and make modifications. Paul made a branch for deteceting sensor info without forcing a stop.
 Generally, you just want to follow the firmware developer guide from the odrive docs.
 
 ## Sensorless mode
-Sensorless mode is dumb but you need to use it sometimes, like when you are putting the motor into a lathe to center a pin.
+Sensorless mode is dumb but you need to use it sometimes, like when you are putting the motor into a lathe to center a pin. There is a guide under parameters and commands on the odrive docs, but this does not necessarily work all the time wince sensorless mode is bad. When using a hoverboard motor in sensorless mode, you should be able to just set the axis state and then doing velocity control. Sometimes you have to give the motor a little kick-start, but once it gets going its pretty good. If you are using sensorless mode to turn down a center pin using the lathe, make sure that you have the motor spinning in the correct direction. Sometimes sensorless mode like running in one direction more (less bad sound), which is really strange but if you get it spinning fast everything sort of equals out.
 
 ## Using index search
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+There is one alternative to using the standard encoder offset calibration every time you reboot the ODrive. Instead of having the motor move one way then the other, you can have the motor simply move in one direction until it reaches the encoder index, which remains in the same spot with every reboot.
+The ODrive docs have good instructions for using this means of calibration under the encoder page.
+With some of the fancier encoder, you can electronically reset the indiex position, but for the standard ones you kind of have to finagle it. You can run the encoder search once to move the encoder into its index position. Then, carefully remove the motor pin from the encoder making sure not to change the encoder position. Then, with the motor separated, rotate the motor to the positionyou want it to end in during calibration. Take into account how gravity will impact rest position while the motor is unpowered. The delta arm uses this system unless I was not able to program it in time.
