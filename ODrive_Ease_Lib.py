@@ -5,8 +5,8 @@ import usb.core
 from odrive.enums import *
 
 
-# Used to make using the ODrive easier Version 2.5
-# Last update May 24, 2019 by Blake Lazarine
+# Used to make using the ODrive easier Version 2.6
+# Last update June 14, 2019 by Blake Lazarine
 
 def find_ODrives():
     dev = usb.core.find(find_all=1, idVendor=0x1209, idProduct=0x0d32)
@@ -356,7 +356,19 @@ def calibrate_list(odrives):
             is_done = True
 
 
-print('ODrive Ease Lib 2.5')
+# configures a hoverboard motor. Requires save and reboot
+def configure_hoverboard(ax):
+    ax.axis.motor.config.pole_pairs = 15
+    ax.axis.motor.config.resistance_calib_max_voltage = 4
+    ax.axis.motor.config.requested_current_range = 25
+    ax.axis.motor.config.current_control_bandwidth = 100
+    ax.axis.controller.config.pos_gain = 1
+    ax.axis.controller.config.vel_gain = 0.02
+    ax.axis.controller.config.vel_integrator_gain = 0.1
+    ax.axis.controller.config.vel_limit = 1000
+    ax.axis.controller.config.control_mode = CTRL_MODE_VELOCITY_CONTROL
+
+print('ODrive Ease Lib 2.6')
 '''
 odrv0 = odrive.find_any()
 print(str(odrv0.vbus_voltage))

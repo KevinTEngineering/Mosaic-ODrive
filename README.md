@@ -18,6 +18,8 @@ To connect to multiple odrive boards simultaneously is a little more complicated
 The easiest way to control the ODrive is though the ODrive_Ease_Lib Library, since it condenses commonly used commands into singular, short, and intuitive lines. The only major issue with this is that it can send redundant commands. This is not a problem for most situations (where very rapid updates are not required). But in situations like in the Gantry Game or the conference sand table where complex paths are determined by rapidly updating pos_setpoint, the latency can be a problem. The best way of going around this is to just use the native odrive commands where you set the axis requested state and controller control mode a singular time then during updates, only change the pos_setpoint.
 It is possible that some of the fields used by ODrive_Ease_Lib are renamed or moved in later versions of the ODrive firmware. This was the case before where the measured velocity from the encoder was previously pll_vel, whereas now it is vel_estimate. 
 
+UNCERTAIN: So it seems that sometimes there are problems when you try to use the ODrive with an RPI right on RPI boot. This can be resolved by throwing a sleep before connecting to the ODrive in scripts that run on system boot. This has worked 4/4 times on the guitar, but no thorough investigation has been done so we aren't sure if this is even really a thing. On the guitar we used a 60 second sleep, but that is probably overkill.
+
 ## Calibrating
 There are multiple degrees of calibration: none, motor, encoder, complete. Usually, having a calibrated encoder is the same as having a complete calibration. 
 
