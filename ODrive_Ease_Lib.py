@@ -259,10 +259,12 @@ class ODrive_Axis(object):
         return self.axis.motor.current_meas_phC
 
     # only use if doing encoder index search calibration and if setup is already done
-    def index_and_hold(self):
+    def index_and_hold(self, good_dir=2):
         self.axis.requested_state = AXIS_STATE_ENCODER_INDEX_SEARCH
         while self.axis.current_state != AXIS_STATE_IDLE:
             time.sleep(0.1)
+        if good_dir != 2:
+            self.axis.motor.config.direction = good_dir
         self.set_vel(0)
 
 
