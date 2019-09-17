@@ -267,7 +267,7 @@ class ODrive_Axis(object):
             time.sleep(0.1)
         if good_dir != 2:
             self.axis.motor.config.direction = good_dir
-        self.set_pos(ax.get_pos())
+        self.set_pos(self.get_pos())
 
 
     # Clears all the errors on the axis
