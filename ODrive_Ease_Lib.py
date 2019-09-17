@@ -5,8 +5,8 @@ import usb.core
 from odrive.enums import *
 
 
-# Used to make using the ODrive easier Version 2.6.1
-# Last update June 27, 2019 by Blake Lazarine
+# Used to make using the ODrive easier Version 2.6.2
+# Last update September 17, 2019 by Blake Lazarine
 
 def find_ODrives():
     dev = usb.core.find(find_all=1, idVendor=0x1209, idProduct=0x0d32)
@@ -259,13 +259,15 @@ class ODrive_Axis(object):
         return self.axis.motor.current_meas_phC
 
     # only use if doing encoder index search calibration and if setup is already done
-    def index_and_hold(self, good_dir=2):
+    def index_and_hold(self, dir=2, good_dir=2):
+        if dir != 2:
+            self.axis.motor.config.direction = dir
         self.axis.requested_state = AXIS_STATE_ENCODER_INDEX_SEARCH
         while self.axis.current_state != AXIS_STATE_IDLE:
             time.sleep(0.1)
         if good_dir != 2:
             self.axis.motor.config.direction = good_dir
-        self.set_vel(0)
+        self.set_pos(ax.get_pos())
 
 
     # Clears all the errors on the axis
@@ -378,7 +380,7 @@ def configure_hoverboard(ax):
     ax.axis.controller.config.vel_limit = 1000
     ax.axis.controller.config.control_mode = CTRL_MODE_VELOCITY_CONTROL
 
-print('ODrive Ease Lib 2.6.1')
+print('ODrive Ease Lib 2.6.2')
 '''
 odrv0 = odrive.find_any()
 print(str(odrv0.vbus_voltage))
