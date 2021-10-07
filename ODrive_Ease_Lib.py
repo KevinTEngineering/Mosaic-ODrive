@@ -5,8 +5,8 @@ import usb.core
 from odrive.enums import *
 
 
-# Used to make using the ODrive easier Version 2.6.2
-# Last update September 17, 2019 by Blake Lazarine
+# Used to make using the ODrive easier Version 2.7.1
+# Last update October 6 2021 by John Wilmanns
 
 def find_ODrives():
     dev = usb.core.find(find_all=1, idVendor=0x1209, idProduct=0x0d32)
@@ -27,6 +27,28 @@ def reboot_ODrive(od):
         od.reboot()
     except:
         print('rebooted')
+
+def generic_startup(home = False, home_vel = 2, home_dir = 1): #starts an odrive axis, calibrates it etc. Use as a guide, would not reccomend deploying rn as it only does one axis and will receive some functionallity updates in the near future. #todo: add second axis and fix returns
+
+    od = odrive.find_any()
+    od.axis1.motor.config.current_lim = 20
+    od.axis1.requested_state = AXIS_STATE_FULL_CALIBRATION_SEQUENCE
+
+    time.sleep(10)
+
+    ax = ODrive_Axis(od.axis1)
+
+    print("calibrating")
+    ax.calibrate_encoder()
+
+    od.axis1.requested_state = 8
+    od.axis1.controller.config.control_mode = 3
+
+    if home:
+        ax.home_with_vel(home_vel, home_dir)
+
+
+    return ax, od
 
 
 class ODrive_Axis(object):
@@ -63,9 +85,11 @@ class ODrive_Axis(object):
 
     # sets the motor to a specified velocity. Does not go over the velocity limit
     def set_vel(self, vel):
-        self.axis.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
-        self.axis.controller.config.control_mode = CTRL_MODE_VELOCITY_CONTROL
-        self.axis.controller.vel_setpoint = vel
+        if self.axis.requested_state != 8: #we don't use enums because they seem to occationally have issues
+            self.axis.requested_state = 8
+        if self.axis.controller.config.control_mode != 2:
+            self.axis.controller.config.control_mode = 2
+        self.axis.controller.input_vel = vel
 
     # sets the motor's velocity limit. Default is 20000
     def set_vel_limit(self, vel):
@@ -94,9 +118,11 @@ class ODrive_Axis(object):
     # sets the desired position
     def set_pos(self, pos):
         desired_pos = pos + self.zero
-        self.axis.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
-        self.axis.controller.config.control_mode = CTRL_MODE_POSITION_CONTROL
-        self.axis.controller.pos_setpoint = desired_pos
+        if self.axis.requested_state != 8: #we don't use enums because they seem to occationally have issues
+            self.axis.requested_state = 8
+        if self.axis.controller.config.control_mode != 3:
+            self.axis.controller.config.control_mode = 3
+        self.axis.controller.input_pos = desired_pos
 
     # sets position using the trajectory control mode
     def set_pos_trap(self, pos):
@@ -109,15 +135,24 @@ class ODrive_Axis(object):
     def set_curr_limit(self, val):
         self.axis.motor.config.current_lim = val
 
+    def set_current_limit(self, val):
+        self.axis.motor.config.current_lim = val
+
     # returns the current limit
     def get_curr_limit(self):
         return self.axis.motor.config.current_lim
 
     # sets the current sent to the motor
-    def set_current(self, curr):
-        self.axis.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
-        self.axis.controller.config.control_mode = CTRL_MODE_CURRENT_CONTROL
-        self.axis.controller.current_setpoint = curr
+    def set_current(self, curr): #is now torque control
+        if self.axis.requested_state != 8: #we don't use enums because they seem to occationally have issues
+            self.axis.requested_state = 8
+        if self.axis.controller.config.control_mode != 1:
+            self.axis.controller.config.control_mode = 1
+        self.axis.controller.input_torque = curr
+
+    #added this for correctness, left old name for legacy support
+    def set_torque(self, torque):
+        set_current(self, torque)
 
     # returns the velocity measured from the encoder
     def get_vel(self):
@@ -204,7 +239,7 @@ class ODrive_Axis(object):
     # homes the motor by having it move towards one side with a constant velocity. Once it can no longer move, it considers this its home
     # The direction can be specified either by the sign of the velocty passed in or through the direction parameter
     # If the length of the track is known, it can be passed in. If this is done, after moving to one side, the motor will move to the other to find if the homing was successful.
-    def home_with_vel(self, vel, length=-1, direction=1):
+    def home_with_vel(self, vel = .5, length=-1, direction=1):
         self.set_vel(vel * -1 * direction)
         print('here')
         time.sleep(1)
@@ -249,6 +284,22 @@ class ODrive_Axis(object):
 
         self.axis.min_endstop.config.enabled = False
         self.axis.max_endstop.config.enabled = False
+
+
+    #basically just runs into the wall for a set number of seconds, seems to be the most consistant
+    def scuffed_home(self, seconds = 5, torque = .1, dir = 1):
+        print("homing")
+        if not(dir == 1 or dir == -1):
+            raise Exception("direction should be 1 or -1")
+
+        self.axis.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
+        self.axis.controller.config.control_mode = 1
+
+        self.axis.controller.input_torque = torque * dir * -1 #multiply by -1 to make this make actual sense
+        time.sleep(seconds)
+        self.axis.controller.input_torque = 0
+        self.set_zero(self.get_raw_pos())
+
 
     # returns phase B current going into motor
     def get_curr_B(self):
