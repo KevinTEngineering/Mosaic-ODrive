@@ -85,8 +85,8 @@ class ODrive_Axis(object):
 
     # sets the motor to a specified velocity. Does not go over the velocity limit
     def set_vel(self, vel):
-        if self.axis.requested_state != CONTROL_MODE_VELOCITY_CONTROL: #we don't use enums because they seem to occationally have issues
-            self.axis.requested_state = CONTROL_MODE_VELOCITY_CONTROL
+        if self.axis.requested_state != AXIS_STATE_CLOSED_LOOP_CONTROL: #we don't use enums because they seem to occationally have issues
+            self.axis.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
         if self.axis.controller.config.control_mode != CONTROL_MODE_VELOCITY_CONTROL:
             self.axis.controller.config.control_mode = CONTROL_MODE_VELOCITY_CONTROL
         self.axis.controller.input_vel = vel
