@@ -41,8 +41,8 @@ def generic_startup(home = False, home_vel = 2, home_dir = 1): #starts an odrive
     print("calibrating")
     ax.calibrate_encoder()
 
-    od.axis1.requested_state = 8
-    od.axis1.controller.config.control_mode = 3
+    od.axis1.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
+    od.axis1.controller.config.control_mode = CONTROL_MODE_POSITION_CONTROL
 
     if home:
         ax.home_with_vel(home_vel, home_dir)
@@ -85,10 +85,10 @@ class ODrive_Axis(object):
 
     # sets the motor to a specified velocity. Does not go over the velocity limit
     def set_vel(self, vel):
-        if self.axis.requested_state != 8: #we don't use enums because they seem to occationally have issues
-            self.axis.requested_state = 8
-        if self.axis.controller.config.control_mode != 2:
-            self.axis.controller.config.control_mode = 2
+        if self.axis.requested_state != CONTROL_MODE_VELOCITY_CONTROL: #we don't use enums because they seem to occationally have issues
+            self.axis.requested_state = CONTROL_MODE_VELOCITY_CONTROL
+        if self.axis.controller.config.control_mode != CONTROL_MODE_VELOCITY_CONTROL:
+            self.axis.controller.config.control_mode = CONTROL_MODE_VELOCITY_CONTROL
         self.axis.controller.input_vel = vel
 
     # sets the motor's velocity limit. Default is 20000
@@ -118,10 +118,10 @@ class ODrive_Axis(object):
     # sets the desired position
     def set_pos(self, pos):
         desired_pos = pos + self.zero
-        if self.axis.requested_state != 8: #we don't use enums because they seem to occationally have issues
-            self.axis.requested_state = 8
-        if self.axis.controller.config.control_mode != 3:
-            self.axis.controller.config.control_mode = 3
+        if self.axis.requested_state != AXIS_STATE_CLOSED_LOOP_CONTROL:
+            self.axis.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
+        if self.axis.controller.config.control_mode != CONTROL_MODE_POSITION_CONTROL:
+            self.axis.controller.config.control_mode = CONTROL_MODE_POSITION_CONTROL
         self.axis.controller.input_pos = desired_pos
 
     # sets position using the trajectory control mode
@@ -144,10 +144,10 @@ class ODrive_Axis(object):
 
     # sets the current sent to the motor
     def set_current(self, curr): #is now torque control
-        if self.axis.requested_state != 8: #we don't use enums because they seem to occationally have issues
-            self.axis.requested_state = 8
-        if self.axis.controller.config.control_mode != 1:
-            self.axis.controller.config.control_mode = 1
+        if self.axis.requested_state != AXIS_STATE_CLOSED_LOOP_CONTROL:
+            self.axis.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
+        if self.axis.controller.config.control_mode != CONTROL_MODE_TORQUE_CONTROL:
+            self.axis.controller.config.control_mode = CONTROL_MODE_TORQUE_CONTROL
         self.axis.controller.input_torque = curr
 
     #added this for correctness, left old name for legacy support
@@ -293,7 +293,7 @@ class ODrive_Axis(object):
             raise Exception("direction should be 1 or -1")
 
         self.axis.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
-        self.axis.controller.config.control_mode = 1
+        self.axis.controller.config.control_mode = CONTROL_MODE_TORQUE_CONTROL
 
         self.axis.controller.input_torque = torque * dir * -1 #multiply by -1 to make this make actual sense
         time.sleep(seconds)
