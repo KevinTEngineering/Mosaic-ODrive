@@ -5,7 +5,7 @@ import usb.core
 from odrive.enums import *
 
 
-# Used to make using the ODrive easier Version 2.7.1
+# Used to make using the ODrive easier Version 0.5.3
 # Last update October 6 2021 by John Wilmanns
 
 def find_ODrives():
@@ -85,7 +85,7 @@ class ODrive_Axis(object):
 
     # sets the motor to a specified velocity. Does not go over the velocity limit
     def set_vel(self, vel):
-        if self.axis.requested_state != AXIS_STATE_CLOSED_LOOP_CONTROL: #we don't use enums because they seem to occationally have issues
+        if self.axis.requested_state != AXIS_STATE_CLOSED_LOOP_CONTROL:
             self.axis.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
         if self.axis.controller.config.control_mode != CONTROL_MODE_VELOCITY_CONTROL:
             self.axis.controller.config.control_mode = CONTROL_MODE_VELOCITY_CONTROL
@@ -123,13 +123,14 @@ class ODrive_Axis(object):
         if self.axis.controller.config.control_mode != CONTROL_MODE_POSITION_CONTROL:
             self.axis.controller.config.control_mode = CONTROL_MODE_POSITION_CONTROL
         self.axis.controller.input_pos = desired_pos
-
+    
+    # TODO: Implement Trajectory Control
     # sets position using the trajectory control mode
-    def set_pos_trap(self, pos):
-        desired_pos = pos + self.zero
-        self.axis.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
-        self.axis.controller.config.control_mode = CTRL_MODE_TRAJECTORY_CONTROL
-        self.axis.controller.move_to_pos(desired_pos)
+    #def set_pos_trap(self, pos):
+    #    desired_pos = pos + self.zero
+    #    self.axis.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
+    #    self.axis.controller.config.control_mode = CTRL_MODE_TRAJECTORY_CONTROL
+    #    self.axis.controller.move_to_pos(desired_pos)
 
     # sets the current limit
     def set_curr_limit(self, val):
