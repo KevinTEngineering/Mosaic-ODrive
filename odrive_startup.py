@@ -14,18 +14,35 @@ def startup(od):
     # Selecting an axis to talk to, axis0 and axis1 correspond to M0 and M1 on the ODrive
     ax = ODrive_Ease_Lib.ODrive_Axis(od.axis0)
 
-    print("Current Position in Turns = ", ax.get_pos())
-    print("Encoder Position in Turns = ", ax.get_raw_pos())
+    if not ax.is_calibrated():
+        print("calibrating...")
+        ax.calibrate()
+
+    print("Current Position in Turns = ", round(ax.get_pos(), 2))
+    print("Encoder Position in Turns = ", round(ax.get_raw_pos(), 2))
     ax.set_vel_limit(10)  # Sets the velocity limit to be 10 turns/s
     ax.set_vel(5)  # Starts turning the motor 5 turns/s
     sleep(3)
-    print("Encoder Measured Velocity = ", ax.get_vel())
+    print("Encoder Measured Velocity = ", round(ax.get_vel(), 2))
     ax.set_vel(0)  # Stops motor
-    print("Current Position in Turns = ", ax.get_pos())  # Should be at 15 turns
-    print("Encoder Position in Turns = ", ax.get_raw_pos())
+    print("Current Position in Turns = ", round(ax.get_pos(), 2))  # Should be at 15 turns
+    print("Encoder Position in Turns = ", round(ax.get_raw_pos(), 2))
     ax.set_raw_pos(0)
     while ax.is_busy(1):
         sleep(.1)
+    print("Encoder Position in Turns = ", round(ax.get_raw_pos(), 2))
+
+    sleep(3)
+
+    ax.set_vel_limit(10)
+    ax.set_pos(50)
+    while ax.is_busy(0):
+        sleep(.1)
+    print("Encoder Position in Turns = ", round(ax.get_raw_pos(), 2))
+    ax.set_pos(0)
+    while ax.is_busy(0):
+        sleep(.1)
+
     ax.idle()
 
 
@@ -41,4 +58,4 @@ if __name__ == "__main__":
     assert odrv0.error == 0, "Odrive has errors present, please diagnose using odrivetool"
 
     startup(odrv0)
-    #ODrive_Ease_Lib.dump_errors(odrv0)
+    ODrive_Ease_Lib.dump_errors(odrv0)

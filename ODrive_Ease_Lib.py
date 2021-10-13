@@ -4,8 +4,6 @@ import odrive
 import usb.core
 from odrive.enums import *
 
-print('ODrive Ease Lib 0.5.3')
-
 
 def find_odrive():
     print("ODrive Version: ", odrive.version.get_version_str())
@@ -122,6 +120,13 @@ class ODrive_Axis(object):
         desired_pos = pos + self.home if not using_encoder else pos
         self.axis.controller.input_pos = desired_pos
 
+    def set_relative_pos(self, pos):
+        self.axis.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
+        self.axis.controller.config.control_mode = CONTROL_MODE_POSITION_CONTROL
+
+        desired_pos = pos + self.get_pos()
+        self.axis.controller.input_pos = desired_pos
+
     # returns the current position relative to the home
     def get_pos(self):
         return self.axis.encoder.pos_estimate - self.home
@@ -179,6 +184,7 @@ class ODrive_Axis(object):
     # checks if the motor is moving. Need to use a threshold speed. by default it is 500 counts/second
     # this can be set during initialization of ODrive_Axis object, through later setting of the busy_lim, or through a parameter to the is_busy method
     def is_busy(self, speed=-1):
+        time.sleep(.5)  # allows motor to start moving
         if speed == -1:
             speed = self.busy_lim
         if (abs(self.get_vel())) > speed:
