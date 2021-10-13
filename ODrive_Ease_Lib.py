@@ -4,160 +4,153 @@ import odrive
 import usb.core
 from odrive.enums import *
 
+print('ODrive Ease Lib 0.5.3')
 
-# Used to make using the ODrive easier Version 0.5.3
-# Last update October 6 2021 by John Wilmanns
 
-def find_ODrives():
-    dev = usb.core.find(find_all=1, idVendor=0x1209, idProduct=0x0d32)
-    od = []
-    try:
-        while True:
-            a = next(dev)
-            od.append(odrive.find_any('usb:%s:%s' % (a.bus, a.address)))
-            print('added')
-    except:
-        pass
+def find_odrive():
+    print("ODrive Version: ", odrive.version.get_version_str())
+    od = odrive.find_any()
+
+    od.clear_errors()
+    assert od.error == 0, "Odrive has errors present, please diagnose using odrivetool"
+
     return od
 
 
+def find_odrives():
+    dev = usb.core.find(find_all=1, idVendor=0x1209, idProduct=0x0d32)
+    ods = []
+    try:
+        while True:
+            a = next(dev)
+            ods.append(odrive.find_any('usb:%s:%s' % (a.bus, a.address)))
+            print('added')
+    except:
+        pass
+    return ods
+
+
+def dump_errors(od):
+    odrive.utils.dump_errors(od)
+
+
 # Reboots a singular odrive. You will need to reconnect to it in your code after rebooting
-def reboot_ODrive(od):
+def reboot_odrive(od):
     try:
         od.reboot()
     except:
         print('rebooted')
 
-def generic_startup(home = False, home_vel = 2, home_dir = 1): #starts an odrive axis, calibrates it etc. Use as a guide, would not reccomend deploying rn as it only does one axis and will receive some functionallity updates in the near future. #todo: add second axis and fix returns
-
-    od = odrive.find_any()
-    od.axis1.motor.config.current_lim = 20
-    od.axis1.requested_state = AXIS_STATE_FULL_CALIBRATION_SEQUENCE
-
-    time.sleep(10)
-
-    ax = ODrive_Axis(od.axis1)
-
-    print("calibrating")
-    ax.calibrate_encoder()
-
-    od.axis1.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
-    od.axis1.controller.config.control_mode = CONTROL_MODE_POSITION_CONTROL
-
-    if home:
-        ax.home_with_vel(home_vel, home_dir)
-
-
-    return ax, od
-
 
 class ODrive_Axis(object):
 
-    def __init__(self, axis, vel_lim=20000):
+    def __init__(self, axis, vel_lim=100, current_lim=10):
         self.axis = axis
-        self.zero = 0
-        self.axis.controller.config.vel_limit = vel_lim
+        self.home = axis.encoder.pos_estimate
+        self.axis.controller.config.vel_limit = vel_lim   # defaults at 100 turns/s
+        self.axis.motor.config.current_lim = current_lim  # defaults to 10 Amps
         self.busy_lim = 500
 
-    # enters full calibration sequence
-    def calibrate(self):
-        self.axis.requested_state = AXIS_STATE_FULL_CALIBRATION_SEQUENCE
+    # sets the current allowed during the calibration sequence
+    # Higher currents are needed when the motor encounters more resistence to motion
+    def set_calibration_current(self, curr):
+        self.axis.motor.config.calibration_current = curr
+
+    # returns the allowed calibraiton current. By default it is 5 amps (3 phase not DC)
+    def get_calibration_current(self):
+        return self.axis.motor.config.calibration_current
+
+    # enters full calibration sequence (calibrates motor and encoder)
+    def calibrate(self, state=AXIS_STATE_FULL_CALIBRATION_SEQUENCE):
+        self.axis.requested_state = state
         start = time.time()
         while self.axis.current_state != AXIS_STATE_IDLE:
             time.sleep(0.1)
             if time.time() - start > 15:
                 print("could not calibrate, try rebooting odrive")
                 return False
+        return True
 
     # enters encoder offset calibration
     def calibrate_encoder(self):
-        self.axis.requested_state = AXIS_STATE_ENCODER_OFFSET_CALIBRATION
-        start = time.time()
-        while self.axis.current_state != AXIS_STATE_IDLE:
-            time.sleep(0.1)
-            if time.time() - start > 15:
-                print("could not calibrate, try rebooting odrive")
-                return False
+        return self.calibrate(AXIS_STATE_ENCODER_OFFSET_CALIBRATION)
 
-    # checks if the motor is claibrated and the encoder is ready
     def is_calibrated(self):
         return self.axis.motor.is_calibrated and self.axis.encoder.is_ready
 
-    # sets the motor to a specified velocity. Does not go over the velocity limit
-    def set_vel(self, vel):
-        if self.axis.requested_state != AXIS_STATE_CLOSED_LOOP_CONTROL:
-            self.axis.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
-        if self.axis.controller.config.control_mode != CONTROL_MODE_VELOCITY_CONTROL:
-            self.axis.controller.config.control_mode = CONTROL_MODE_VELOCITY_CONTROL
-        self.axis.controller.input_vel = vel
+    def set_current_limit(self, val):
+        self.axis.motor.config.current_lim = val
 
-    # sets the motor's velocity limit. Default is 20000
+    def get_curr_limit(self):
+        return self.axis.motor.config.current_lim
+
+    # sets the motor's velocity limit. Default starts slow at 100
     def set_vel_limit(self, vel):
         self.axis.controller.config.vel_limit = vel
+
+    # sets the motor to a specified velocity. Does not go over the velocity limit
+    def set_vel(self, vel):
+        self.axis.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
+        self.axis.controller.config.control_mode = CONTROL_MODE_VELOCITY_CONTROL
+
+        self.axis.controller.input_vel = vel
+
+    # returns the velocity measured from the encoder
+    def get_vel(self):
+        return self.axis.encoder.vel_estimate
 
     # returns the velocity limit
     def get_vel_limit(self):
         return self.axis.controller.config.vel_limit
 
-    # sets the zero (home pos) to the specified position
-    def set_zero(self, pos):
-        self.zero = pos
-
-    # sets the zero to the current_position
+    # sets the home to the current_position
     def set_home(self):
-        self.zero = self.get_raw_pos()
+        self.home = self.get_raw_pos()
+
+    # sets the home pos to a specified position
+    def set_home_to(self, pos):
+        self.home = pos
+
+    def get_home(self):
+        return self.home
+
+    # sets the desired position relative to the home position
+    def set_pos(self, pos, using_encoder=False):
+        self.axis.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
+        self.axis.controller.config.control_mode = CONTROL_MODE_POSITION_CONTROL
+
+        desired_pos = pos + self.home if not using_encoder else pos
+        self.axis.controller.input_pos = desired_pos
 
     # returns the current position relative to the home
     def get_pos(self):
-        return self.axis.encoder.pos_estimate - self.zero
+        return self.axis.encoder.pos_estimate - self.home
+
+    # sets the desired position relative to the encoder
+    def set_raw_pos(self, pos):
+        self.set_pos(pos, True)
 
     # returns the current position directly from the encoder
     def get_raw_pos(self):
         return self.axis.encoder.pos_estimate
-
-    # sets the desired position
-    def set_pos(self, pos):
-        desired_pos = pos + self.zero
-        if self.axis.requested_state != AXIS_STATE_CLOSED_LOOP_CONTROL:
-            self.axis.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
-        if self.axis.controller.config.control_mode != CONTROL_MODE_POSITION_CONTROL:
-            self.axis.controller.config.control_mode = CONTROL_MODE_POSITION_CONTROL
-        self.axis.controller.input_pos = desired_pos
     
     # TODO: Implement Trajectory Control
     # sets position using the trajectory control mode
     #def set_pos_trap(self, pos):
-    #    desired_pos = pos + self.zero
+    #    desired_pos = pos + self.home
     #    self.axis.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
     #    self.axis.controller.config.control_mode = CTRL_MODE_TRAJECTORY_CONTROL
     #    self.axis.controller.move_to_pos(desired_pos)
 
-    # sets the current limit
-    def set_curr_limit(self, val):
-        self.axis.motor.config.current_lim = val
-
-    def set_current_limit(self, val):
-        self.axis.motor.config.current_lim = val
-
-    # returns the current limit
-    def get_curr_limit(self):
-        return self.axis.motor.config.current_lim
-
     # sets the current sent to the motor
-    def set_current(self, curr): #is now torque control
-        if self.axis.requested_state != AXIS_STATE_CLOSED_LOOP_CONTROL:
-            self.axis.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
-        if self.axis.controller.config.control_mode != CONTROL_MODE_TORQUE_CONTROL:
-            self.axis.controller.config.control_mode = CONTROL_MODE_TORQUE_CONTROL
+    def set_current(self, curr):  # this is now torque control
+        self.axis.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
+        self.axis.controller.config.control_mode = CONTROL_MODE_TORQUE_CONTROL
+
         self.axis.controller.input_torque = curr
 
-    #added this for correctness, left old name for legacy support
     def set_torque(self, torque):
-        set_current(self, torque)
-
-    # returns the velocity measured from the encoder
-    def get_vel(self):
-        return self.axis.encoder.vel_estimate
+        self.set_current(torque)
 
     # Sets the position gain value
     def set_pos_gain(self, val):
@@ -193,14 +186,6 @@ class ODrive_Axis(object):
         else:
             return False
 
-    # sets the current allowed during the calibration sequence. Higher currents are needed when the motor encounters more resistence to motion
-    def set_calibration_current(self, curr):
-        self.axis.motor.config.calibration_current = curr
-
-    # returns the allowed calibraiton current. By default it is 5 amps (3 phase not DC)
-    def get_calibration_current(self):
-        return self.axis.motor.config.calibration_current
-
     # method to home ODrive using where the chassis is mechanically stopped
     # length is expected length of the track the ODrive takes
     # set length to -1 if you do not want the ODrive to check its homing
@@ -216,7 +201,7 @@ class ODrive_Axis(object):
 
         time.sleep(1)
 
-        self.set_zero(self.get_raw_pos())
+        self.set_home()
         print(self.get_pos())
 
         time.sleep(1)
@@ -250,7 +235,7 @@ class ODrive_Axis(object):
 
         time.sleep(1)
 
-        self.set_zero(self.get_raw_pos())
+        self.set_home()
         print(self.get_pos())
 
         time.sleep(1)
@@ -280,15 +265,14 @@ class ODrive_Axis(object):
         while (self.axis.error == 0):
             pass
         if self.axis.error == 0x800 or self.axis.error == 0x1000:
-            self.set_zero(self.get_raw_pos())
+            self.set_home()
             self.axis.error = 0
 
         self.axis.min_endstop.config.enabled = False
         self.axis.max_endstop.config.enabled = False
 
-
-    #basically just runs into the wall for a set number of seconds, seems to be the most consistant
-    def scuffed_home(self, seconds = 5, torque = .1, dir = 1):
+    # basically just runs into the wall for a set number of seconds, seems to be the most consistant
+    def scuffed_home(self, seconds=5, torque=.1, dir=1):
         print("homing")
         if not(dir == 1 or dir == -1):
             raise Exception("direction should be 1 or -1")
@@ -296,11 +280,10 @@ class ODrive_Axis(object):
         self.axis.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
         self.axis.controller.config.control_mode = CONTROL_MODE_TORQUE_CONTROL
 
-        self.axis.controller.input_torque = torque * dir * -1 #multiply by -1 to make this make actual sense
+        self.axis.controller.input_torque = torque * dir * -1  # multiply by -1 to make this make actual sense
         time.sleep(seconds)
         self.axis.controller.input_torque = 0
-        self.set_zero(self.get_raw_pos())
-
+        self.set_home()
 
     # returns phase B current going into motor
     def get_curr_B(self):
@@ -321,7 +304,6 @@ class ODrive_Axis(object):
             self.axis.motor.config.direction = good_dir
         self.set_pos(self.get_pos())
 
-
     # Clears all the errors on the axis
     def clear_errors(self):
         self.axis.error = 0
@@ -329,6 +311,14 @@ class ODrive_Axis(object):
         self.axis.motor.error = 0
         self.axis.controller.error = 0
         #There is also sensorless estimator errors but those are super rare and I am not sure what the object field is called to ima just leave it
+
+    ##################################################
+    ##########     TESTING FUNCTIONS        ##########
+    ##################################################
+
+    def idle(self):
+        self.axis.requested_state = AXIS_STATE_IDLE
+
 
 
 class double_ODrive(object):
@@ -431,15 +421,3 @@ def configure_hoverboard(ax):
     ax.axis.controller.config.vel_integrator_gain = 0.1
     ax.axis.controller.config.vel_limit = 1000
     ax.axis.controller.config.control_mode = CTRL_MODE_VELOCITY_CONTROL
-
-print('ODrive Ease Lib 2.6.2')
-'''
-odrv0 = odrive.find_any()
-print(str(odrv0.vbus_voltage))
-
-ax = ODrive_Axis(odrv0.axis1)
-ax.calibrate()
-#ax.set_vel(10000)
-#ax.home(0.05, -1)
-
-'''
