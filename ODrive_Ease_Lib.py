@@ -42,12 +42,11 @@ def reboot_odrive(od):
 
 class ODrive_Axis(object):
 
-    def __init__(self, axis, vel_lim=100, current_lim=10):
+    def __init__(self, axis, vel_lim=10, current_lim=10):
         self.axis = axis
         self.home = axis.encoder.pos_estimate
         self.axis.controller.config.vel_limit = vel_lim   # defaults at 100 turns/s
         self.axis.motor.config.current_lim = current_lim  # defaults to 10 Amps
-        self.busy_lim = 500
 
     # sets the current allowed during the calibration sequence
     # Higher currents are needed when the motor encounters more resistence to motion
@@ -112,32 +111,28 @@ class ODrive_Axis(object):
     def get_home(self):
         return self.home
 
+    # sets the desired position relative to the encoder
+    def set_raw_pos(self, pos):
+        self.axis.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
+        self.axis.controller.config.control_mode = CONTROL_MODE_POSITION_CONTROL
+
+        self.axis.controller.input_pos = pos
+
+    # returns the current position directly from the encoder
+    def get_raw_pos(self):
+        return self.axis.encoder.pos_estimate
+
     # sets the desired position relative to the home position
-    def set_pos(self, pos, using_encoder=False):
-        self.axis.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
-        self.axis.controller.config.control_mode = CONTROL_MODE_POSITION_CONTROL
-
-        desired_pos = pos + self.home if not using_encoder else pos
-        self.axis.controller.input_pos = desired_pos
-
-    def set_relative_pos(self, pos):
-        self.axis.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
-        self.axis.controller.config.control_mode = CONTROL_MODE_POSITION_CONTROL
-
-        desired_pos = pos + self.get_pos()
-        self.axis.controller.input_pos = desired_pos
+    def set_pos(self, pos):
+        self.set_raw_pos(pos + self.home)
 
     # returns the current position relative to the home
     def get_pos(self):
         return self.axis.encoder.pos_estimate - self.home
 
-    # sets the desired position relative to the encoder
-    def set_raw_pos(self, pos):
-        self.set_pos(pos, True)
-
-    # returns the current position directly from the encoder
-    def get_raw_pos(self):
-        return self.axis.encoder.pos_estimate
+    # sets the desired position relative to the current position
+    def set_relative_pos(self, pos):
+        self.set_raw_pos(pos + self.get_pos())
     
     # TODO: Implement Trajectory Control
     # sets position using the trajectory control mode
@@ -181,12 +176,9 @@ class ODrive_Axis(object):
     def get_vel_integrator_gain(self):
         return self.axis.controller.config.vel_integrator_gain
 
-    # checks if the motor is moving. Need to use a threshold speed. by default it is 500 counts/second
-    # this can be set during initialization of ODrive_Axis object, through later setting of the busy_lim, or through a parameter to the is_busy method
-    def is_busy(self, speed=-1):
-        time.sleep(.5)  # allows motor to start moving
-        if speed == -1:
-            speed = self.busy_lim
+    # checks if the motor is moving. Need to use a threshold speed. by default it is 0 turns/second
+    def is_busy(self, speed=0):
+        time.sleep(.5)  # allows motor to start moving, specifically for position control
         if (abs(self.get_vel())) > speed:
             return True
         else:
