@@ -10,37 +10,52 @@ from odrive.enums import *
 od = odrive.find_any()
 joy = Joystick(0, False)
 
+
 class xAxis():
-
-
-    def start_joy_thread(self):
+    sensor = True
+    stick = True
+    def start_threads(self):
+        print("Start joystick thread")
         Thread(target=self.joy_update).start()
+        Thread(target=self.proximity_update).start()
+
+    def start_prox_thread(self):
+        print("Start proximity sensor thread")
+        Thread(target=self.proximity_update).start()
 
     def joy_update(self):
         print("lll")
-        stick = True
-        while stick:
+
+        while self.stick:
             if joy.get_button_state(3):
                 print("Check 4")
 
-                self.ax.set_vel(-3)
+                self.ax.set_vel(-3)  # Set velocity to -3 revs/turn, stops after 0.1 secs
                 sleep(.1)
                 self.ax.set_vel(0)
 
             if joy.get_button_state(4):
                 print("Check 5")
 
-                self.ax.set_vel(3)
+                self.ax.set_vel(3)  # Set velocity to 3 revs/turn, stops after 0.1 secs
                 sleep(0.1)
                 self.ax.set_vel(0)
 
             if joy.get_button_state(2):
-                stick = False
-            if self.ax.axis.min_stop.axis_state:
+                self.stick = False
+
+
+    def proximity_update(self):
+        if joy.get_button_state(5):
+            print("Check 6")
+        print("FUUUUUUUUUUAS")
+        while self.sensor:
+            if self.ax.axis.min_endstop.endstop_state:
                 print("Contact w/ sensor")
+                # od.clear_errors()
 
-# Port 8
-
+    # Port 8 x axis
+    # Port 2 axis z
 
     def onstartup(self):
         ODrive_Ease_Lib.dump_errors(od)
@@ -73,5 +88,6 @@ if __name__ == "__main__":
     odrv0.clear_errors()
     x = xAxis()
     x.onstartup()
-    x.start_joy_thread()
+    x.start_threads()
     x.joy_update()
+    x.start_prox_thread()
