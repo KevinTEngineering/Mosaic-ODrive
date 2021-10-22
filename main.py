@@ -54,7 +54,8 @@ class xAxis():
             if self.ax.axis.min_endstop.endstop_state:
                 print("Contact w/ sensor")
                 od.clear_errors() # clear errors to allow the rest of the machine to run
-                print("Checking after")
+                print("Checking after") # ensure that errors don't halt the deliverance of commands
+
                 self.ax.set_vel(-2)
                 sleep(0.2)
                 self.ax.set_vel(0)
@@ -83,7 +84,7 @@ class xAxis():
         self.Prox_Sensor_Number = axax.min_endstop.config.gpio_num  # setting to global class Runner variable just so that I can reference it in the Thread print statements
         axax.min_endstop.config.enabled = True  # Turns sensor on, says that I am using it
         axax.min_endstop.config.offset = 1  # stops 1 rotation away from sensor
-        axax.min_endstop.config.debounce_ms = 20  # checks again after 20 milliseconds if actually pressed, which is what debounce is :D
+        axax.min_endstop.config.debounce_ms = 20  # checks again after 20 milliseconds if actually pressed
         axax.min_endstop.config.offset = -1.0 * 8192  # hop back from GPIO in order to allow for function again
         od.config.gpio8_mode = GPIO_MODE_DIGITAL_PULL_DOWN
 
