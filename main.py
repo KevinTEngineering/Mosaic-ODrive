@@ -11,10 +11,9 @@ od = odrive.find_any()
 joy = Joystick(0, False)
 
 class xAxis():
-    print("LOp")
+
 
     def start_joy_thread(self):
-        print("okl")
         Thread(target=self.joy_update).start()
 
     def joy_update(self):
