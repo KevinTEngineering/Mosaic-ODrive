@@ -1,8 +1,14 @@
 import time
+import logging
 
 import odrive
+import odrive.configuration
 import usb.core
 from odrive.enums import *
+
+# For use with ODrive version 0.5.3
+# Credit to Blake Lazarine for orignally creating this library
+
 
 
 def find_odrive():
@@ -32,6 +38,18 @@ def dump_errors(od):
     odrive.utils.dump_errors(od)
 
 
+def backup_configuration(od, filename=None):
+    logger = logging.getLogger("backup")
+    logger.setLevel(logging.INFO)
+    odrive.configuration.backup_config(od, filename, logger)
+
+
+def restore_configuration(od, filename=None):
+    logger = logging.getLogger("restore")
+    logger.setLevel(logging.INFO)
+    odrive.configuration.restore_config(od, filename, logger)
+
+
 # Reboots a singular odrive. You will need to reconnect to it in your code after rebooting
 def reboot_odrive(od):
     try:
@@ -42,31 +60,29 @@ def reboot_odrive(od):
 
 class ODrive_Axis(object):
 
-    def __init__(self, axis, vel_lim=10, current_lim=10):
+    def __init__(self, axis, current_lim=10, vel_lim=10):
         self.axis = axis
         self.home = axis.encoder.pos_estimate
-        self.axis.controller.config.vel_limit = vel_lim   # defaults at 100 turns/s
         self.axis.motor.config.current_lim = current_lim  # defaults to 10 Amps
-
-    # sets the current allowed during the calibration sequence
-    # Higher currents are needed when the motor encounters more resistence to motion
-    def set_calibration_current(self, curr):
-        self.axis.motor.config.calibration_current = curr
-
-    # returns the allowed calibraiton current. By default it is 5 amps (3 phase not DC)
-    def get_calibration_current(self):
-        return self.axis.motor.config.calibration_current
+        self.axis.controller.config.vel_limit = vel_lim   # defaults at 10 turns/s
 
     # enters full calibration sequence (calibrates motor and encoder)
     def calibrate(self, state=AXIS_STATE_FULL_CALIBRATION_SEQUENCE):
         self.axis.requested_state = state
         start = time.time()
+        time.sleep(5)  # Gives time for motor to switch out of idle state
         while self.axis.current_state != AXIS_STATE_IDLE:
-            time.sleep(0.1)
+            time.sleep(0.5)
             if time.time() - start > 15:
                 print("could not calibrate, try rebooting odrive")
                 return False
         return True
+
+    def calibrate_with_current(self, curr_lim):
+        original_curr = self.get_current_limit()
+        self.set_current_limit(curr_lim)
+        self.calibrate()
+        self.set_current_limit(original_curr)
 
     # enters encoder offset calibration
     def calibrate_encoder(self):
@@ -75,10 +91,26 @@ class ODrive_Axis(object):
     def is_calibrated(self):
         return self.axis.motor.is_calibrated and self.axis.encoder.is_ready
 
+    # sets the current allowed during the calibration sequence
+    # Higher currents are needed when the motor encounters more resistance to motion
+    # NOTE: this function does not seem to work consistently, please use calibrate_with_current if encountering
+    # issues with low current during calibration
+    def set_calibration_current(self, calib_current):
+        self.axis.motor.config.calibration_current = calib_current
+
+    # returns the allowed calibraiton current. By default it is 5 amps (3 phase not DC)
+    def get_calibration_current(self):
+        return self.axis.motor.config.calibration_current
+
+    def set_gains(self, pos_g=20, vel_g=.16, vel_int_g=.32):
+        self.set_pos_gain(pos_g)
+        self.set_vel_gain(vel_g)
+        self.set_vel_integrator_gain(vel_int_g)
+
     def set_current_limit(self, val):
         self.axis.motor.config.current_lim = val
 
-    def get_curr_limit(self):
+    def get_current_limit(self):
         return self.axis.motor.config.current_lim
 
     # sets the motor's velocity limit. Default starts slow at 100
@@ -88,6 +120,7 @@ class ODrive_Axis(object):
     # sets the motor to a specified velocity. Does not go over the velocity limit
     def set_vel(self, vel):
         self.axis.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
+        self.axis.controller.config.input_mode = INPUT_MODE_PASSTHROUGH
         self.axis.controller.config.control_mode = CONTROL_MODE_VELOCITY_CONTROL
 
         self.axis.controller.input_vel = vel
@@ -99,6 +132,19 @@ class ODrive_Axis(object):
     # returns the velocity limit
     def get_vel_limit(self):
         return self.axis.controller.config.vel_limit
+
+    # Uses ramped velocity control where the speed, vel [turns/s], will be gradually reached
+    # with acceleration, accel [turns/s^2].
+    def set_ramped_vel(self, vel, accel):
+        if self.axis.requested_state != AXIS_STATE_CLOSED_LOOP_CONTROL:
+            self.axis.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
+        if self.axis.controller.config.input_mode != INPUT_MODE_VEL_RAMP:
+            self.axis.controller.config.input_mode = INPUT_MODE_VEL_RAMP
+        if self.axis.controller.config.control_mode != CONTROL_MODE_VELOCITY_CONTROL:
+            self.axis.controller.config.control_mode = CONTROL_MODE_VELOCITY_CONTROL
+
+        self.axis.controller.config.vel_ramp_rate = accel
+        self.axis.controller.input_vel = vel
 
     # sets the home to the current_position
     def set_home(self):
@@ -114,6 +160,7 @@ class ODrive_Axis(object):
     # sets the desired position relative to the encoder
     def set_raw_pos(self, pos):
         self.axis.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
+        self.axis.controller.config.input_mode = INPUT_MODE_PASSTHROUGH
         self.axis.controller.config.control_mode = CONTROL_MODE_POSITION_CONTROL
 
         self.axis.controller.input_pos = pos
@@ -133,7 +180,7 @@ class ODrive_Axis(object):
     # sets the desired position relative to the current position
     def set_relative_pos(self, pos):
         self.set_raw_pos(pos + self.get_pos())
-    
+
     # TODO: Implement Trajectory Control
     # sets position using the trajectory control mode
     #def set_pos_trap(self, pos):
@@ -145,6 +192,7 @@ class ODrive_Axis(object):
     # sets the current sent to the motor
     def set_current(self, curr):  # this is now torque control
         self.axis.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
+        self.axis.controller.config.input_mode = INPUT_MODE_PASSTHROUGH
         self.axis.controller.config.control_mode = CONTROL_MODE_TORQUE_CONTROL
 
         self.axis.controller.input_torque = curr
@@ -177,7 +225,7 @@ class ODrive_Axis(object):
         return self.axis.controller.config.vel_integrator_gain
 
     # checks if the motor is moving. Need to use a threshold speed. by default it is 0 turns/second
-    def is_busy(self, speed=0):
+    def is_busy(self, speed=0.1):
         time.sleep(.5)  # allows motor to start moving, specifically for position control
         if (abs(self.get_vel())) > speed:
             return True
@@ -313,6 +361,9 @@ class ODrive_Axis(object):
     ##################################################
     ##########     TESTING FUNCTIONS        ##########
     ##################################################
+
+    # TODO: Implement saving configurations and loading configurations from file
+    # TODO: https://github.com/odriverobotics/ODrive/blob/master/tools/odrive/configuration.py
 
     def idle(self):
         self.axis.requested_state = AXIS_STATE_IDLE
