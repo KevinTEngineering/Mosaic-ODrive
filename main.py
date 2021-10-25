@@ -21,8 +21,6 @@ class xAxis():
         Thread(target=self.joy_update).start()
         Thread(target=self.proximity_update).start()
 
-
-
     def joy_update(self):
         print("lll")
 
@@ -31,19 +29,22 @@ class xAxis():
             if joy.get_button_state(3):
                 print("Check 4")
 
-                self.ax.set_vel(-3)  # Set velocity to -3 revs/turn, stops after 0.1 secs
-                sleep(.1)
+                self.ax.set_vel(-2)  # Set velocity to -3 revs/turn, stops after 0.1 secs
+                sleep(.05)
                 self.ax.set_vel(0)
 
             # When pressing button 5 on joystick, move it toward from motor
             if joy.get_button_state(4):
                 print("Check 5")
 
-                self.ax.set_vel(3)  # Set velocity to 3 revs/turn, stops after 0.1 secs
-                sleep(0.1)
+                self.ax.set_vel(2)  # Set velocity to 3 revs/turn, stops after 0.1 secs
+                sleep(0.05)
                 self.ax.set_vel(0)
 
             if joy.get_button_state(0):
+                if not self.ax.axis.min_endstop.endstop_state:
+                    self.ax.set_vel(3)  # Set velocity to 3 revs/turn, stops after 0.1 secs
+                    sleep(0.1)
                 quit()
 
     def proximity_update(self):
@@ -56,7 +57,7 @@ class xAxis():
                 od.clear_errors()  # clear errors to allow the rest of the machine to run
                 print("Checking after")  # ensure that errors don't halt the deliverance of commands
 
-                self.ax.set_vel(-2)
+                self.ax.set_vel(-1)
                 sleep(0.2)
                 self.ax.set_vel(0)
 
@@ -73,7 +74,9 @@ class xAxis():
         self.ax.set_vel_gain(0.16)
         self.ax.set_vel_integrator_gain(0.32)
         self.ax.axis.controller.config.enable_overspeed_error = False
+        ODrive_Ease_Lib.dump_errors(od)
         od.clear_errors()
+
         if not self.ax.is_calibrated():  # or od.error != 0:
             print("calibrating...")
             self.ax.calibrate_with_current(35)
@@ -81,7 +84,7 @@ class xAxis():
         axax = self.ax.axis
         od.config.gpio8_mode = GPIO_MODE_DIGITAL
         axax.min_endstop.config.gpio_num = 2  # pin 8 for x, 2 for y, 2 for z
-        self.Prox_Sensor_Number = axax.min_endstop.config.gpio_num  # setting to global class Runner variable just so that I can reference it in the Thread print statements
+        self.Prox_Sensor_Number = axax.min_endstop.config.gpio_num  # setting to global class Runner variable just so that I can reference it in the Thread print statements # Would I need this?
         axax.min_endstop.config.enabled = True  # Turns sensor on, says that I am using it
         axax.min_endstop.config.offset = 1  # stops 1 rotation away from sensor
         axax.min_endstop.config.debounce_ms = 20  # checks again after 20 milliseconds if actually pressed
