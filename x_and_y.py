@@ -1,4 +1,3 @@
-
 from time import sleep
 import odrive
 import ODrive_Ease_Lib
@@ -7,6 +6,7 @@ from threading import Thread
 from odrive.enums import *
 
 od = odrive.find_any(serial_number='208D3388304B')
+odz = odrive.find_any(serial_number='2065339E304B')
 joy = Joystick(0, False)
 
 
@@ -53,44 +53,69 @@ class xAxis():
 
                 self.ay.set_vel(5)  # Rising is delayed, hold it down to move it, stop by pressing down
                 sleep(1)
-                self.ay.set_vel(0)
+                self.ay.set_vel(0)  # Nvm, I'm just being dumb; set this to be associated with ay
 
-            if joy.get_button_state(0):
-                pass
+            if joy.get_button_state(7):
+                print("Check 8")
 
-                # if not self.ax.axis.min_endstop.endstop_state:
-                #     self.ax.set_vel(3)  # Set velocity to 3 revs/turn, stops after 0.1 secs
-                #     sleep(0.1)
-                # quit()
+                self.az.set_vel(-2)  # Set velocity to -3 revs/turn, stops after 0.1 secs
+                sleep(.05)
+                self.az.set_vel(0)
 
-    def proximity_update(self):
-        if joy.get_button_state(5):
-            print("Check 6")
-        print("FUUUUUUUUUUAS")
-        while self.sensor:
-            if self.ax.axis.min_endstop.endstop_state:
-                print("Contact w/ sensor")
-                od.clear_errors()  # clear errors to allow the rest of the machine to run
-                print("Checking after")  # ensure that errors don't halt the deliverance of commands
+            # When pressing button 5 on joystick, move it toward from motor
+            if joy.get_button_state(8):
+                print("Check 9")
 
-                self.ax.set_vel(-1)
-                sleep(0.2)
-                self.ax.set_vel(0)
+                self.az.set_vel(2)  # Set velocity to 3 revs/turn, stops after 0.1 secs
+                sleep(0.05)
+                self.az.set_vel(0)
+
+            # if joy.get_button_state(0):
+            #     self.az.set_vel(-2)  # Set velocity to 3 revs/turn, stops after 0.1 secs
+            #     sleep(0.1)
+            #     odz.clear_errors()
+            #     if not joy.get_button_state(0):
+            #         if not self.az.axis.min_endstop.endstop_state:
+            #             self.az.set_vel(2)
+            #             sleep(0.1)
+            #             odz.clear_errors()
+# axis x is moving for no reason after releasing trigger. 
+    # Resolved. Leftover code moved x-axis when detected z-axis on sensor.
+
+# 2065339E304B z-axis
+
+    # def proximity_update(self):
+    #     if joy.get_button_state(5):
+    #         print("Check 6")
+    #     print("FUUUUUUUUUUAS")
+    #     while self.sensor:
+    #         if self.ax.axis.min_endstop.endstop_state:
+    #             print("Contact w/ sensor")
+    #             od.clear_errors()  # clear errors to allow the rest of the machine to run
+    #             print("Checking after")  # ensure that errors don't halt the deliverance of commands
+
 
 
     # Port 8 x axis
     # Port 2 axis z
 
     def onstartup(self):
-        #dumperrors
+        # dumperrors
         ODrive_Ease_Lib.dump_errors(od)
-        #define ax and ay
+        # define ax and ay
         self.ax = ODrive_Ease_Lib.ODrive_Axis(od.axis0, 15, 15)
         self.ay = ODrive_Ease_Lib.ODrive_Axis(od.axis1, 40, 15)
-        #calibrate
-        if not self.ax.is_calibrated():#calibrate x (left right)
+        self.az = ODrive_Ease_Lib.ODrive_Axis(odz.axis0, 15, 15)
+        # calibrate
+        if not self.ax.is_calibrated():  # calibrate x (left right)
             print("calibrating...")
             self.ax.calibrate_with_current(25)
+
+        if not self.ay.is_calibrated():  # calibrate x (left right)
+            self.ay.calibrate_with_current(40)
+
+        if not self.az.is_calibrated():  # calibrate x (left right)
+            self.az.calibrate_with_current(25)
 
         self.ax.set_pos_gain(20)
         self.ax.set_vel_gain(0.16)
@@ -100,7 +125,6 @@ class xAxis():
 
         self.ax.idle()
         self.ay.idle()
-
 
 
 if __name__ == "__main__":
