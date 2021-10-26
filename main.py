@@ -29,7 +29,7 @@ class xAxis():
             if joy.get_button_state(3):
                 print("Check 4")
 
-                self.ax.set_vel(-2)  # Set velocity to -3 revs/turn, stops after 0.1 secs
+                self.ax.set_vel(-4)  # Set velocity to -2 revs/turn, stops after 0.05 secs, for z-axis
                 sleep(.05)
                 self.ax.set_vel(0)
 
@@ -37,7 +37,7 @@ class xAxis():
             if joy.get_button_state(4):
                 print("Check 5")
 
-                self.ax.set_vel(2)  # Set velocity to 3 revs/turn, stops after 0.1 secs
+                self.ax.set_vel(4)  # Set velocity to 2 revs/turn, stops after 0.05 secs, fo z-axis
                 sleep(0.05)
                 self.ax.set_vel(0)
 
@@ -80,6 +80,7 @@ class xAxis():
         if not self.ax.is_calibrated():  # or od.error != 0:
             print("calibrating...")
             self.ax.calibrate_with_current(35)
+            # Current of 35?
 
         axax = self.ax.axis
         od.config.gpio8_mode = GPIO_MODE_DIGITAL
